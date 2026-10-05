@@ -1,0 +1,18 @@
+{
+  "b7e82982-43e2-4954-a9e7-371450560080": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791134017887,
+    "lastActive": 1791134035031
+  },
+  "401c13c2-1eaf-4e65-9e0d-905de356f74e": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "name": "JOHN MARQ E. RAMOS"
+    },
+    "createdAt": 1791157542678,
+    "lastActive": 1791157542678
+  }
+}

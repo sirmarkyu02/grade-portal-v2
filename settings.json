@@ -1,0 +1,1 @@
+{ "adminPassword": "admin123", "portalName": "Student Grade Portal", "portalLogo": "", "schoolName": "", "visibleTerms": { "Term 1": true, "Term 2": true, "Term 3": true }, "features": { "grades": true, "attendance": true }, "sessionTimeout": 7200000 }

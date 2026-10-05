@@ -1,0 +1,22 @@
+{
+  "name": "grade-portal-v2-backend",
+  "version": "2.0.0",
+  "description": "Grade Portal v2 Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "chokidar": "^5.0.0",
+    "cors": "^2.8.6",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "lodash": "^4.18.1",
+    "multer": "^2.4.0",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
+    "xlsx-populate": "^1.21.0"
+  }
+}
