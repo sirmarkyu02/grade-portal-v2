@@ -21,5 +21,14 @@
     "releaseFinals": {
       "Term 2": false
     }
+  },
+  "Intro to Org - BE.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": true,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "blockedStudents": [],
+    "releaseFinals": {}
   }
 }

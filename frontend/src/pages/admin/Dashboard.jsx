@@ -3,7 +3,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
-import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle } from 'lucide-react';
+import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
@@ -377,10 +377,14 @@ function SettingsPage() {
   const [form, setForm] = useState({});
   const [logs, setLogs] = useState([]);
   const [sessions, setSessions] = useState({});
+  const [activeTab, setActiveTab] = useState('general');
+  const [classes, setClasses] = useState([]);
+  const [expandedTerms, setExpandedTerms] = useState({});
 
   useEffect(() => {
     api.get('/admin/activity-logs').then(r => setLogs(r.data.logs || []));
     api.get('/admin/sessions').then(r => setSessions(r.data.sessions || {}));
+    api.get('/admin/classes').then(r => setClasses(r.data.classes || []));
   }, []);
 
   const revokeSession = async (token) => {
@@ -409,110 +413,231 @@ function SettingsPage() {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
 
   return (
-    <div className="page-content fade-in">
-      <div className="grid-2" style={{ alignItems: 'start' }}>
-        <div className="card">
-          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Portal Settings</h3></div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label">Portal Name</label>
-              <input className="form-input" type="text" value={form.portalName || ''} onChange={e => setForm(f => ({ ...f, portalName: e.target.value }))} placeholder="e.g. Student Grade Portal" />
+    <div className="page-content fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div className="tabs">
+        <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>General & Identity</button>
+        <button className={`tab-btn ${activeTab === 'terms' ? 'active' : ''}`} onClick={() => setActiveTab('terms')}>Terms & Access</button>
+        <button className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`} onClick={() => setActiveTab('system')}>System Logs & Sessions</button>
+      </div>
+
+      <div style={{ maxWidth: activeTab === 'system' ? 1000 : 800 }}>
+        {activeTab === 'general' && (
+          <div className="card fade-in">
+            <div className="card-header"><h3 style={{ fontSize: '1rem' }}>General Settings</h3></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">Portal Name</label>
+                <input className="form-input" type="text" value={form.portalName || ''} onChange={e => setForm(f => ({ ...f, portalName: e.target.value }))} placeholder="e.g. Student Grade Portal" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">School Name <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                <input className="form-input" type="text" value={form.schoolName || ''} onChange={e => setForm(f => ({ ...f, schoolName: e.target.value }))} placeholder="e.g. STI College" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Change Admin Password <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(leave blank to keep)</span></label>
+                <input className="form-input" type="password" value={form.adminPassword || ''} onChange={e => setForm(f => ({ ...f, adminPassword: e.target.value }))} placeholder="New admin password" />
+              </div>
+              <div className="divider" />
+              <div className="form-group">
+                <label className="form-label">School Address</label>
+                <input className="form-input" type="text" value={form.schoolInfo?.address || ''} onChange={e => setForm(f => ({ ...f, schoolInfo: { ...f.schoolInfo, address: e.target.value } }))} placeholder="Address" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Global Notification Banner</label>
+                <div style={{display: 'flex', gap: 10}}>
+                  <input className="form-input" style={{flex: 1}} type="text" value={form.notification?.message || ''} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, message: e.target.value } }))} placeholder="Announcement text" />
+                  <label className="toggle" style={{marginTop: 8}}>
+                    <input type="checkbox" checked={form.notification?.enabled || false} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, enabled: e.target.checked } }))} />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              </div>
+              <div className="divider" />
+              <div>
+                <p className="form-label" style={{ marginBottom: 12 }}>Features</p>
+                {[['grades', 'Grade Viewing'], ['attendance', 'Attendance Viewing']].map(([k, label]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 500 }}>{label}</span>
+                    <label className="toggle">
+                      <input type="checkbox" checked={form.features?.[k] !== false} onChange={e => setForm(f => ({ ...f, features: { ...f.features, [k]: e.target.checked } }))} />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={handleSave} disabled={saving}>
+                {saving ? <><LoadingSpinner /> Saving...</> : 'Save General Settings'}
+              </button>
             </div>
-            <div className="form-group">
-              <label className="form-label">School Name <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
-              <input className="form-input" type="text" value={form.schoolName || ''} onChange={e => setForm(f => ({ ...f, schoolName: e.target.value }))} placeholder="e.g. STI College" />
+          </div>
+        )}
+
+        {activeTab === 'terms' && (
+          <div className="card fade-in">
+            <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Terms & Access Control</h3></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div>
+                <p className="form-label" style={{ marginBottom: 12 }}>Visible Terms (Full Data)</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Control which terms are visible to students when they view their grades.</p>
+                {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
+                  <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontWeight: 500 }}>{t}</span>
+                    <label className="toggle">
+                      <input type="checkbox" checked={form.visibleTerms?.[t] !== false} onChange={e => setForm(f => ({ ...f, visibleTerms: { ...f.visibleTerms, [t]: e.target.checked } }))} />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+
+              <div className="divider" />
+              
+              <div>
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Lock size={18} color="var(--brand-500)" />
+                    <p className="form-label" style={{ marginBottom: 0 }}>Term Lock (Teacher Access)</p>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Prevent teachers from editing, modifying, or adding components to a specific term to ensure the integrity of the grades after the term ends.
+                  </p>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => {
+                    const termLockState = form.termLocks?.[t];
+                    // If it's a boolean true, all are locked. If it's an object, we check if any are locked to show the master toggle as 'indeterminate' or checked.
+                    const isAllLocked = termLockState === true || (typeof termLockState === 'object' && Object.values(termLockState).every(v => v === true) && Object.keys(termLockState).length === classes.length && classes.length > 0);
+                    const isAnyLocked = isAllLocked || (typeof termLockState === 'object' && Object.values(termLockState).some(v => v === true));
+                    const isExpanded = !!expandedTerms[t];
+
+                    const toggleAll = (checked) => {
+                      setForm(f => ({ ...f, termLocks: { ...f.termLocks, [t]: checked } }));
+                    };
+
+                    const toggleSubject = (filename, checked) => {
+                      setForm(f => {
+                        let currentState = f.termLocks?.[t];
+                        let newState = {};
+                        if (currentState === true) {
+                          // Convert to object mapping
+                          classes.forEach(c => newState[c.filename] = true);
+                        } else if (typeof currentState === 'object') {
+                          newState = { ...currentState };
+                        }
+                        newState[filename] = checked;
+                        return { ...f, termLocks: { ...f.termLocks, [t]: newState } };
+                      });
+                    };
+
+                    return (
+                      <div key={t} style={{ 
+                        display: 'flex', flexDirection: 'column', 
+                        backgroundColor: isAnyLocked ? 'var(--brand-50)' : 'var(--bg-input)',
+                        border: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--border)'}`,
+                        borderRadius: 8,
+                        transition: 'all 0.2s',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1 }} onClick={() => setExpandedTerms(prev => ({ ...prev, [t]: !prev[t] }))}>
+                            <div style={{ 
+                              width: 32, height: 32, borderRadius: '50%', 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              backgroundColor: isAllLocked ? 'var(--brand-100)' : 'var(--violet-100)',
+                              color: isAllLocked ? 'var(--brand-600)' : 'var(--violet-600)'
+                            }}>
+                              {isAllLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontWeight: 600, color: isAllLocked ? 'var(--brand-700)' : 'var(--text-primary)' }}>{t}</span>
+                                {isExpanded ? <ChevronUp size={16} color="var(--text-muted)"/> : <ChevronDown size={16} color="var(--text-muted)"/>}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: isAllLocked ? 'var(--brand-500)' : 'var(--text-muted)' }}>
+                                {isAllLocked ? 'Locked for editing' : (isAnyLocked ? 'Partially locked' : 'Open for editing')}
+                              </div>
+                            </div>
+                          </div>
+                          <label className="toggle">
+                            <input type="checkbox" checked={isAllLocked} onChange={e => toggleAll(e.target.checked)} />
+                            <span className="toggle-slider" />
+                          </label>
+                        </div>
+                        {isExpanded && (
+                          <div style={{ borderTop: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--border)'}`, padding: '12px 16px', backgroundColor: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {classes.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>No classes available.</p> : 
+                             classes.map(c => {
+                               const isClassLocked = termLockState === true || (typeof termLockState === 'object' && termLockState[c.filename]);
+                               return (
+                                 <div key={c.filename} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                   <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                     <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{c.subject}</span>
+                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.gradeLevel} - {c.section}</span>
+                                   </div>
+                                   <label className="toggle">
+                                     <input type="checkbox" checked={!!isClassLocked} onChange={e => toggleSubject(c.filename, e.target.checked)} />
+                                     <span className="toggle-slider" />
+                                   </label>
+                                 </div>
+                               );
+                             })
+                            }
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={handleSave} disabled={saving}>
+                {saving ? <><LoadingSpinner /> Saving...</> : 'Save Term Settings'}
+              </button>
             </div>
-            <div className="form-group">
-              <label className="form-label">Change Admin Password <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(leave blank to keep)</span></label>
-              <input className="form-input" type="password" value={form.adminPassword || ''} onChange={e => setForm(f => ({ ...f, adminPassword: e.target.value }))} placeholder="New admin password" />
-            </div>
-            <div className="divider" />
-            <div className="form-group">
-              <label className="form-label">School Address</label>
-              <input className="form-input" type="text" value={form.schoolInfo?.address || ''} onChange={e => setForm(f => ({ ...f, schoolInfo: { ...f.schoolInfo, address: e.target.value } }))} placeholder="Address" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Global Notification Banner</label>
-              <div style={{display: 'flex', gap: 10}}>
-                <input className="form-input" style={{flex: 1}} type="text" value={form.notification?.message || ''} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, message: e.target.value } }))} placeholder="Announcement text" />
-                <label className="toggle" style={{marginTop: 8}}>
-                  <input type="checkbox" checked={form.notification?.enabled || false} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, enabled: e.target.checked } }))} />
-                  <span className="toggle-slider" />
-                </label>
+          </div>
+        )}
+
+        {activeTab === 'system' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="card fade-in">
+              <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Active Sessions</h3></div>
+              <div className="table-wrapper">
+                <table className="data-table">
+                  <thead><tr><th>User</th><th>Role</th><th>Active Since</th><th>Action</th></tr></thead>
+                  <tbody>
+                    {Object.entries(sessions).map(([tok, s]) => (
+                      <tr key={tok}>
+                        <td>{s.meta?.name || s.userId}</td>
+                        <td>{s.role}</td>
+                        <td style={{fontSize:'0.8rem'}}>{new Date(s.createdAt).toLocaleString()}</td>
+                        <td><button className="btn btn-danger btn-sm" onClick={() => revokeSession(tok)}>Revoke</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="divider" />
-            <div>
-              <p className="form-label" style={{ marginBottom: 12 }}>Visible Terms (Full Data)</p>
-              {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
-                <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontWeight: 500 }}>{t}</span>
-                  <label className="toggle">
-                    <input type="checkbox" checked={form.visibleTerms?.[t] !== false} onChange={e => setForm(f => ({ ...f, visibleTerms: { ...f.visibleTerms, [t]: e.target.checked } }))} />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              ))}
+            <div className="card fade-in">
+              <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Activity Logs</h3></div>
+              <div className="table-wrapper" style={{maxHeight: 400, overflow: 'auto'}}>
+                <table className="data-table">
+                  <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+                  <tbody>
+                    {logs.slice(0, 50).map(l => (
+                      <tr key={l.id}>
+                        <td style={{fontSize:'0.8rem'}}>{new Date(l.timestamp).toLocaleString()}</td>
+                        <td>{l.userId} ({l.role})</td>
+                        <td>{l.action}</td>
+                        <td style={{fontSize:'0.8rem', color: 'var(--text-muted)'}}>{l.details}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-
-            <div>
-              <p className="form-label" style={{ marginBottom: 12 }}>Features</p>
-              {[['grades', 'Grade Viewing'], ['attendance', 'Attendance Viewing']].map(([k, label]) => (
-                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                  <span style={{ fontWeight: 500 }}>{label}</span>
-                  <label className="toggle">
-                    <input type="checkbox" checked={form.features?.[k] !== false} onChange={e => setForm(f => ({ ...f, features: { ...f.features, [k]: e.target.checked } }))} />
-                    <span className="toggle-slider" />
-                  </label>
-                </div>
-              ))}
-            </div>
-            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-              {saving ? <><LoadingSpinner /> Saving...</> : 'Save Settings'}
-            </button>
           </div>
-        </div>
-        <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
-        <div className="card">
-          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Active Sessions</h3></div>
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead><tr><th>User</th><th>Role</th><th>Active Since</th><th>Action</th></tr></thead>
-              <tbody>
-                {Object.entries(sessions).map(([tok, s]) => (
-                  <tr key={tok}>
-                    <td>{s.meta?.name || s.userId}</td>
-                    <td>{s.role}</td>
-                    <td style={{fontSize:'0.8rem'}}>{new Date(s.createdAt).toLocaleString()}</td>
-                    <td><button className="btn btn-danger btn-sm" onClick={() => revokeSession(tok)}>Revoke</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Activity Logs</h3></div>
-          <div className="table-wrapper" style={{maxHeight: 300, overflow: 'auto'}}>
-            <table className="data-table">
-              <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
-              <tbody>
-                {logs.slice(0, 50).map(l => (
-                  <tr key={l.id}>
-                    <td style={{fontSize:'0.8rem'}}>{new Date(l.timestamp).toLocaleString()}</td>
-                    <td>{l.userId} ({l.role})</td>
-                    <td>{l.action}</td>
-                    <td style={{fontSize:'0.8rem', color: 'var(--text-muted)'}}>{l.details}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        </div>
+        )}
       </div>
     </div>
   );
@@ -526,6 +651,8 @@ function StudentsOverview() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [details, setDetails] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     api.get('/admin/students').then(r => setStudents(r.data.students || [])).catch(() => {}).finally(() => setLoading(false));
@@ -547,6 +674,21 @@ function StudentsOverview() {
       localStorage.setItem('admin_return_token', localStorage.getItem('gp_token'));
       login(res.data.token, { id: s.studentNo, name: s.name }, 'student');
     } catch { toast.error('Impersonation failed'); }
+  };
+
+  const handleResetPassword = async () => {
+    const s = confirmReset;
+    if (!s) return;
+    setResetting(true);
+    try {
+      const res = await api.post(`/admin/students/${s.studentNo}/reset-password`);
+      toast.success(`Password reset to: ${res.data.newPassword}`, { duration: 8000 });
+      setConfirmReset(null);
+    } catch {
+      toast.error('Failed to reset password');
+    } finally {
+      setResetting(false);
+    }
   };
 
   const handleSelectStudent = async (studentNo) => {
@@ -591,6 +733,9 @@ function StudentsOverview() {
                       </button>
                       <button className="btn btn-ghost btn-sm" onClick={() => handleImpersonate(s)} title="Impersonate">
                         <UserCheck size={13} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmReset(s)} title="Reset Password">
+                        <Key size={13} />
                       </button>
                       <button className="btn btn-ghost btn-sm" onClick={() => toggleStatus(s)} title={s.status === 'suspended' ? 'Activate' : 'Suspend'}>
                         <Shield size={13} />
@@ -673,6 +818,17 @@ function StudentsOverview() {
           </div>
         ) : <EmptyState icon={Users} title="Error" description="Could not load student details." />}
       </Modal>
+
+      <ConfirmModal 
+        open={!!confirmReset} 
+        onClose={() => setConfirmReset(null)} 
+        onConfirm={handleResetPassword} 
+        loading={resetting} 
+        title="Reset Password" 
+        message={`Are you sure you want to reset the password for ${confirmReset?.name}? Their new password will be the last 6 digits of their Student No.`} 
+        confirmLabel="Reset Password" 
+        variant="primary" 
+      />
     </>
   );
 }

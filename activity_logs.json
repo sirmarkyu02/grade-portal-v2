@@ -1,5 +1,285 @@
 [
   {
+    "id": "cb718ba6-d209-4adb-b052-ace6a0fcbb31",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T12:09:07.778Z"
+  },
+  {
+    "id": "994a2eeb-e36e-4177-99cf-94d74bd18780",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-06T12:08:00.410Z"
+  },
+  {
+    "id": "098a1334-f231-4778-b366-610094b514ff",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T12:07:52.481Z"
+  },
+  {
+    "id": "f96542fc-5774-45bb-ab52-9019d2141848",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-06T12:05:18.526Z"
+  },
+  {
+    "id": "f2e58ede-486a-4b65-8fa4-5b1304ba87d6",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 2000483382",
+    "timestamp": "2026-10-06T12:03:49.022Z"
+  },
+  {
+    "id": "ac6a9d18-397b-40cd-8032-79979a407960",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T11:25:41.205Z"
+  },
+  {
+    "id": "33d298b0-1e96-4f12-a01c-34bd6416efa1",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T11:24:14.844Z"
+  },
+  {
+    "id": "1d3bfc36-c02d-4552-b140-b3c549e2322b",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T11:20:09.248Z"
+  },
+  {
+    "id": "3d403426-2a50-4acf-bf22-0737fff89a62",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T11:18:33.727Z"
+  },
+  {
+    "id": "230b72e7-56cb-4123-b071-6b2990fa95d5",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T11:16:49.345Z"
+  },
+  {
+    "id": "e2fc6cb7-f85f-473d-b18c-9cdc84fcb255",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T11:16:07.738Z"
+  },
+  {
+    "id": "e15af7fa-48d8-4328-a0ac-f66b1e908802",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T11:15:29.413Z"
+  },
+  {
+    "id": "028e43f9-b42a-4112-a745-fd200f956d35",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:55:58.089Z"
+  },
+  {
+    "id": "97fc84ee-81d7-4f7f-af4c-318a521c2e27",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:55:06.362Z"
+  },
+  {
+    "id": "54d5602c-9688-402d-9f87-1cef614412d8",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:55:06.319Z"
+  },
+  {
+    "id": "1478dd1b-e8ac-45e1-a129-6d266660c2f5",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:53:43.518Z"
+  },
+  {
+    "id": "d5bdd2d7-3e25-4a2b-a16e-2d98aad50aa5",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:53:43.431Z"
+  },
+  {
+    "id": "948c5956-3f44-42c1-8fd6-c3a816d53256",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:19:09.403Z"
+  },
+  {
+    "id": "10c0e432-6a0f-4f66-90eb-510fd10e0cd9",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:19:04.979Z"
+  },
+  {
+    "id": "152e5101-5018-4d07-aa37-08656ca5a36c",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:18:54.701Z"
+  },
+  {
+    "id": "ccfad730-8939-4782-8d3f-0574edd7a7ce",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:17:48.069Z"
+  },
+  {
+    "id": "2a6937d4-3a66-4260-af73-c6dba9feeb64",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T10:16:31.826Z"
+  },
+  {
+    "id": "6942fd29-96c0-4e44-b3f1-c16710b0cd73",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:15:23.844Z"
+  },
+  {
+    "id": "643abd43-772a-4388-9baf-a3c529c95cec",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:15:22.138Z"
+  },
+  {
+    "id": "6dce2c05-7ea5-4a23-9089-38f3b2423b57",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:14:50.255Z"
+  },
+  {
+    "id": "9e0f1b01-52a0-431b-87bc-e302150074d3",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T10:11:33.544Z"
+  },
+  {
+    "id": "a996c4c9-09c8-486b-b092-2e52dc02bd1a",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:11:10.279Z"
+  },
+  {
+    "id": "0a1dbd66-f3a2-43eb-9e81-e81d90e226f4",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:10:55.090Z"
+  },
+  {
+    "id": "90e5bba6-b8e5-483c-ab96-ae495e8ccd00",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T10:08:48.970Z"
+  },
+  {
+    "id": "34ce8ed4-b954-43f7-b410-03a74995880b",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-06T10:02:05.990Z"
+  },
+  {
+    "id": "94d4b08c-27d1-4f88-8ec6-ba5476d9de09",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T10:00:14.812Z"
+  },
+  {
+    "id": "12977c2a-d3ad-422a-9ee5-50213c621771",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T09:47:08.055Z"
+  },
+  {
+    "id": "c31001f9-f160-49f9-a049-01ae3dec55d4",
+    "userId": "2000486376",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-06T09:36:50.887Z"
+  },
+  {
+    "id": "9c319637-69f5-4e02-8fde-e5ef3b0cdb2d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Reset Password",
+    "details": "Reset password for student 2000486376",
+    "timestamp": "2026-10-06T09:35:55.206Z"
+  },
+  {
+    "id": "05a056ef-0d70-4192-a1d6-df91f6e806a2",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Reset Password",
+    "details": "Reset password for student 2000486376",
+    "timestamp": "2026-10-06T09:35:51.369Z"
+  },
+  {
     "id": "f3341fdf-e5f0-406a-9f49-6cb4b858adf4",
     "userId": "admin",
     "role": "admin",

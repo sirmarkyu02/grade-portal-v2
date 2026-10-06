@@ -134,7 +134,7 @@ function ClassListPage({ onSelectClass }) {
   );
 }
 
-function ManageColumnsModal({ classInfo, onClose, onSaved }) {
+function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
   const [headers, setHeaders] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -229,12 +229,13 @@ function ManageColumnsModal({ classInfo, onClose, onSaved }) {
   const renderTable = (items, type) => {
     if (!items) return null;
     const activeItems = items.filter(item => type === 'attendance' ? item.dateStr : (item.hps !== null && item.hps !== undefined && item.hps !== ''));
+    const isLocked = isTermLocked(activeTermTab);
     
     return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h4 style={{ fontWeight: 600 }}>{type === 'ww' ? 'Written Works' : type === 'pt' ? 'Performance Tasks' : 'Attendance Dates'}</h4>
-          <button className="btn btn-primary btn-sm" onClick={() => handleAddItem(type)}>
+          <button className="btn btn-primary btn-sm" onClick={() => handleAddItem(type)} disabled={isLocked}>
             + Add {type === 'attendance' ? "Today's Date" : 'Item'}
           </button>
         </div>
@@ -260,17 +261,17 @@ function ManageColumnsModal({ classInfo, onClose, onSaved }) {
                 <td>{i + 1}</td>
                 {type !== 'attendance' && (
                   <td>
-                    <input type="number" min="0" value={item.hps ?? ''} onChange={e => handleUpdate(type, item.col, 'hps', e.target.value ? Number(e.target.value) : null)} style={{ width: 80, padding: 4 }} />
+                    <input type="number" min="0" value={item.hps ?? ''} onChange={e => handleUpdate(type, item.col, 'hps', e.target.value ? Number(e.target.value) : null)} style={{ width: 80, padding: 4 }} disabled={isLocked} />
                   </td>
                 )}
                 <td>
-                  <input type="text" value={type === 'attendance' ? (item.term || '') : (item.label || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'term' : 'label', e.target.value)} style={{ width: 100, padding: 4 }} />
+                  <input type="text" value={type === 'attendance' ? (item.term || '') : (item.label || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'term' : 'label', e.target.value)} style={{ width: 100, padding: 4 }} disabled={isLocked} />
                 </td>
                 <td>
-                  <input type="text" placeholder="e.g. 10/06/2026" value={type === 'attendance' ? (item.dateStr || '') : (item.date || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'dateStr' : 'date', e.target.value)} style={{ width: 120, padding: 4 }} />
+                  <input type="text" placeholder="e.g. 10/06/2026" value={type === 'attendance' ? (item.dateStr || '') : (item.date || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'dateStr' : 'date', e.target.value)} style={{ width: 120, padding: 4 }} disabled={isLocked} />
                 </td>
                 <td>
-                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                  <button className="btn btn-ghost btn-sm" disabled={isLocked} onClick={() => {
                     if (type === 'attendance') {
                       handleUpdate(type, item.col, 'dateStr', '');
                       handleUpdate(type, item.col, 'term', '');
@@ -445,6 +446,8 @@ function GradeEditModal({ classInfo, onClose }) {
   const [manageColsOpen, setManageColsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [classSettings, setClassSettings] = useState({});
+  const [termLocks, setTermLocks] = useState({});
+  const isTermLocked = (term) => typeof termLocks[term] === 'object' ? termLocks[term]?.[classInfo.fileName] : termLocks[term];
   const [changes, setChanges] = useState({}); // { studentNo: { termName: { key: updObj } } }
 
   const handleKeyDown = (e, rowIdx, colIdx, maxRow, maxCol) => {
@@ -474,17 +477,19 @@ function GradeEditModal({ classInfo, onClose }) {
   const [search, setSearch] = useState('');
 
   const loadClassData = useCallback(() => {
-    return api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/full`)
-      .then(r => {
-        const newStudents = r.data.students || [];
-        setStudents(newStudents);
-        setClassSettings(r.data.settings || {});
-        setSelectedStudent(prev => {
-          if (!prev) return prev;
-          return newStudents.find(s => s.studentNo === prev.studentNo) || prev;
-        });
-      })
-      .catch(() => toast.error('Failed to load class data.'));
+    return Promise.all([
+      api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/full`),
+      api.get('/settings/public')
+    ]).then(([rClass, rSet]) => {
+      const newStudents = rClass.data.students || [];
+      setStudents(newStudents);
+      setClassSettings(rClass.data.settings || {});
+      setTermLocks(rSet.data.termLocks || {});
+      setSelectedStudent(prev => {
+        if (!prev) return prev;
+        return newStudents.find(s => s.studentNo === prev.studentNo) || prev;
+      });
+    }).catch(() => toast.error('Failed to load class data.'));
   }, [classInfo.fileName]);
 
   useEffect(() => {
@@ -596,6 +601,7 @@ function GradeEditModal({ classInfo, onClose }) {
                                 className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
                                 style={{ width: '80px', textAlign: 'center', textTransform: 'uppercase' }}
                                 maxLength="1"
+                                disabled={isTermLocked(termName)}
                                 value={val || ''}
                                 title="P: Present, A: Absent, L: Late, E: Excused"
                                 onChange={e => {
@@ -607,6 +613,7 @@ function GradeEditModal({ classInfo, onClose }) {
                               <input
                                 type="number" min="0" max={item.hps} step="0.25"
                                 className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
+                                disabled={isTermLocked(termName)}
                                 value={val ?? ''}
                                 onChange={e => updateScore(student.studentNo, termName, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
                               />
@@ -650,7 +657,7 @@ function GradeEditModal({ classInfo, onClose }) {
       </div>
 
       <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title="Manage Activities & Attendance" size="lg">
-        <ManageColumnsModal classInfo={classInfo} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} />
+        <ManageColumnsModal classInfo={classInfo} isTermLocked={isTermLocked} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} />
       </Modal>
       <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Class Settings" size="md">
         <ClassSettingsModal classInfo={classInfo} settings={classSettings} onClose={() => setSettingsOpen(false)} onSaved={() => { loadClassData(); }} />
@@ -794,6 +801,7 @@ function GradeEditModal({ classInfo, onClose }) {
                                         className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
                                         style={{ width: '80px', margin: '0 auto', textAlign: 'center', textTransform: 'uppercase' }}
                                         maxLength="1"
+                                        disabled={isTermLocked(activeTermTab)}
                                         value={val || ''}
                                         title="P: Present, A: Absent, L: Late, E: Excused"
                                         onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
@@ -809,6 +817,7 @@ function GradeEditModal({ classInfo, onClose }) {
                                         data-col={colIdx}
                                         className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
                                         style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
+                                        disabled={isTermLocked(activeTermTab)}
                                         value={val ?? ''}
                                         onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
                                         onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}

@@ -1,1 +1,38 @@
-{ "adminPassword": "admin123", "portalName": "Student Grade Portal", "portalLogo": "", "schoolName": "", "visibleTerms": { "Term 1": true, "Term 2": true, "Term 3": true }, "features": { "grades": true, "attendance": true }, "sessionTimeout": 7200000 }
+{
+  "adminPassword": "@Xdreal02",
+  "portalName": "Student Grade Portal",
+  "schoolName": "",
+  "visibleTerms": {
+    "Term 1": true,
+    "Term 2": true,
+    "Term 3": true
+  },
+  "termLocks": {
+    "Term 1": {
+      "11 ASSH & STEM - Gen Math.xlsx": true,
+      "11 BE & ICT - Gen Math.xlsx": true,
+      "Intro to Org - BE.xlsx": false
+    }
+  },
+  "gradeRelease": {
+    "Term 1": true,
+    "Term 2": true,
+    "Term 3": true,
+    "Term 4": true
+  },
+  "schoolInfo": {
+    "name": "",
+    "address": "",
+    "contact": ""
+  },
+  "notification": {
+    "enabled": false,
+    "message": ""
+  },
+  "features": {
+    "grades": true,
+    "attendance": true
+  },
+  "sessionTimeout": 7200000,
+  "portalLogo": ""
+}

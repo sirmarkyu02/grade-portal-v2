@@ -54,7 +54,13 @@ let lastSync = null;
 // ─── File Loaders ────────────────────────────────────────────────────────────
 function loadJSON(filePath, defaultVal = {}) {
   try {
-    if (fs.existsSync(filePath)) return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      if (typeof defaultVal === 'object' && !Array.isArray(defaultVal)) {
+        return { ...defaultVal, ...data };
+      }
+      return data;
+    }
   } catch (e) { console.error(`Failed to load ${path.basename(filePath)}:`, e.message); }
   return defaultVal;
 }
@@ -67,6 +73,7 @@ function reloadAll() {
   settingsConfig = loadJSON(SETTINGS_FILE, {
     adminPassword: 'admin123', portalName: 'Student Grade Portal', schoolName: '',
     visibleTerms: { 'Term 1': true, 'Term 2': true, 'Term 3': true },
+    termLocks: { 'Term 1': false, 'Term 2': false, 'Term 3': false },
     gradeRelease: { 'Term 1': true, 'Term 2': true, 'Term 3': true, 'Term 4': true },
     schoolInfo: { name: '', address: '', contact: '' },
     notification: { enabled: false, message: '' },
@@ -548,16 +555,20 @@ app.get('/api/settings', requireAuth(['admin']), (req, res) => {
 });
 
 app.put('/api/settings', requireAuth(['admin']), (req, res) => {
-  const { adminPassword, portalName, schoolName, visibleTerms, features, sessionTimeout, gradeRelease, schoolInfo, notification } = req.body;
+  const { adminPassword, portalName, schoolName, visibleTerms, termLocks, features, sessionTimeout, gradeRelease, schoolInfo, notification } = req.body;
   if (portalName !== undefined) settingsConfig.portalName = portalName;
   if (schoolName !== undefined) settingsConfig.schoolName = schoolName;
   if (visibleTerms !== undefined) settingsConfig.visibleTerms = visibleTerms;
+  if (termLocks !== undefined) settingsConfig.termLocks = termLocks;
   if (features !== undefined) settingsConfig.features = features;
   if (sessionTimeout !== undefined) settingsConfig.sessionTimeout = sessionTimeout;
   if (gradeRelease !== undefined) settingsConfig.gradeRelease = gradeRelease;
   if (schoolInfo !== undefined) settingsConfig.schoolInfo = schoolInfo;
   if (notification !== undefined) settingsConfig.notification = notification;
   if (adminPassword && adminPassword.trim()) settingsConfig.adminPassword = adminPassword.trim();
+  console.log('--- DEBUG ---');
+  console.log('req.body.termLocks:', termLocks);
+  console.log('settingsConfig before save:', settingsConfig);
   saveJSON(SETTINGS_FILE, settingsConfig);
   logActivity('admin', 'admin', 'Update Settings', 'Updated system settings');
   res.json({ success: true });
@@ -833,6 +844,13 @@ app.put('/api/teacher/class/:filename/headers', requireAuth(['teacher']), async 
   const { updates, attendanceUpdates } = req.body;
   if (!teachersConfig[teacherId]?.files?.includes(filename)) return res.status(403).json({ error: 'Forbidden.' });
 
+  // Check term locks
+  const lockedTerms = settingsConfig.termLocks || {};
+  const isLocked = (term) => typeof lockedTerms[term] === 'object' ? lockedTerms[term]?.[filename] : lockedTerms[term];
+  if (updates && updates.some(u => isLocked(u.termName))) {
+    return res.status(403).json({ error: 'One or more of the specified terms are locked by the administrator.' });
+  }
+
   try {
     const XlsxPopulate = require('xlsx-populate');
     const fpath = path.join(GRADES_DIR, filename);
@@ -901,6 +919,13 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
   const { filename, studentNo } = req.params;
   const { updates } = req.body;
   if (!teachersConfig[teacherId]?.files?.includes(filename)) return res.status(403).json({ error: 'Forbidden.' });
+
+  // Check term locks
+  const lockedTerms = settingsConfig.termLocks || {};
+  const isLocked = (term) => typeof lockedTerms[term] === 'object' ? lockedTerms[term]?.[filename] : lockedTerms[term];
+  if (updates && updates.some(u => u.termName !== 'Attendance' && isLocked(u.termName))) {
+    return res.status(403).json({ error: 'One or more of the specified terms are locked by the administrator.' });
+  }
 
   try {
     const XlsxPopulate = require('xlsx-populate');
@@ -1055,6 +1080,19 @@ app.get('/api/teacher/download/:filename', requireAuth(['teacher']), (req, res) 
 //  ADMIN ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
 
+app.get('/api/admin/classes', requireAuth(['admin']), (req, res) => {
+  const classMap = {};
+  Object.values(studentsMap).forEach(s => {
+    s.subjects.forEach(sub => {
+      const fname = sub.info.fileName;
+      if (!classMap[fname]) {
+        classMap[fname] = { filename: fname, ...sub.info };
+      }
+    });
+  });
+  res.json({ success: true, classes: Object.values(classMap) });
+});
+
 // --- Template Management ---
 app.get('/api/admin/templates', requireAuth(['admin']), (req, res) => {
   const files = fs.readdirSync(TEMPLATES_DIR).filter(f => f.endsWith('.xlsx'));
@@ -1204,6 +1242,19 @@ app.get('/api/admin/students/:studentNo', requireAuth(['admin']), (req, res) => 
   if (!student) return res.status(404).json({ error: 'Student not found.' });
   const profile = studentProfilesConfig[studentNo] || {};
   res.json({ success: true, student, profile });
+});
+
+app.post('/api/admin/students/:studentNo/reset-password', requireAuth(['admin']), (req, res) => {
+  const { studentNo } = req.params;
+  const student = studentsMap[studentNo];
+  if (!student) return res.status(404).json({ error: 'Student not found.' });
+
+  const newTempPassword = String(studentNo).slice(-6);
+  passwordsConfig[studentNo] = newTempPassword;
+  saveJSON(PASSWORDS_FILE, passwordsConfig);
+  
+  logActivity('admin', 'admin', 'Reset Password', `Reset password for student ${studentNo}`);
+  res.json({ success: true, newPassword: newTempPassword });
 });
 
 app.get('/api/admin/statistics', requireAuth(['admin']), (req, res) => {
