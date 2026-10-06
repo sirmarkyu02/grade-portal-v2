@@ -133,6 +133,190 @@ function ClassListPage({ onSelectClass }) {
   );
 }
 
+function ManageColumnsModal({ classInfo, onClose, onSaved }) {
+  const [headers, setHeaders] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [activeTermTab, setActiveTermTab] = useState('Term 1');
+  const [activeComponentTab, setActiveComponentTab] = useState('ww');
+
+  useEffect(() => {
+    api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/headers`)
+      .then(r => {
+        setHeaders(r.data);
+        const terms = Object.keys(r.data.columns || {});
+        if (terms.length > 0 && !terms.includes(activeTermTab)) {
+          setActiveTermTab(terms[0]);
+        }
+      })
+      .catch(() => toast.error('Failed to load headers.'))
+      .finally(() => setLoading(false));
+  }, [classInfo.fileName]);
+
+  const handleAddItem = (type) => {
+    setHeaders(prev => {
+      const next = { ...prev };
+      if (type === 'attendance') {
+        const idx = next.attendance.findIndex(a => !a.dateStr);
+        if (idx !== -1) {
+          next.attendance = [...next.attendance];
+          next.attendance[idx] = { ...next.attendance[idx], dateStr: new Date().toLocaleDateString('en-US'), term: activeTermTab.replace('Term ', 'T') };
+        } else {
+          toast.error('No more attendance columns available.');
+        }
+      } else {
+        const termData = { ...next.columns[activeTermTab] };
+        termData[type] = [...termData[type]];
+        const idx = termData[type].findIndex(i => i.hps === null || i.hps === undefined || i.hps === '');
+        if (idx !== -1) {
+           const activeCount = termData[type].filter(i => i.hps !== null && i.hps !== undefined && i.hps !== '').length;
+           termData[type][idx] = { ...termData[type][idx], hps: 10, label: `${type === 'ww' ? 'WW' : 'PT'}${activeCount + 1}` };
+        } else {
+          toast.error(`No more columns available for ${type.toUpperCase()}.`);
+        }
+        next.columns = { ...next.columns, [activeTermTab]: termData };
+      }
+      return next;
+    });
+  };
+
+  const handleUpdate = (type, col, key, val) => {
+    setHeaders(prev => {
+      const next = { ...prev };
+      if (type === 'attendance') {
+        const idx = next.attendance.findIndex(a => a.col === col);
+        if (idx !== -1) {
+          next.attendance = [...next.attendance];
+          next.attendance[idx] = { ...next.attendance[idx], [key]: val };
+        }
+      } else {
+        const termData = { ...next.columns[activeTermTab] };
+        termData[type] = [...termData[type]];
+        const idx = termData[type].findIndex(i => i.col === col);
+        if (idx !== -1) {
+          termData[type][idx] = { ...termData[type][idx], [key]: val };
+        }
+        next.columns = { ...next.columns, [activeTermTab]: termData };
+      }
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updates = [];
+      const attendanceUpdates = [];
+      for (const [termName, termData] of Object.entries(headers.columns)) {
+        for (const w of termData.ww) updates.push({ termName, col: w.col, hps: w.hps, label: w.label, dateStr: w.date });
+        for (const p of termData.pt) updates.push({ termName, col: p.col, hps: p.hps, label: p.label, dateStr: p.date });
+      }
+      for (const a of headers.attendance) attendanceUpdates.push({ col: a.col, dateStr: a.dateStr, term: a.term });
+      await api.put(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/headers`, { updates, attendanceUpdates });
+      toast.success('Activities/Attendance saved successfully!');
+      onSaved();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Save failed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div style={{ padding: 48, display: 'flex', justifyContent: 'center' }}><LoadingSpinner /></div>;
+  if (!headers) return <div style={{ padding: 48, textAlign: 'center' }}>Failed to load headers.</div>;
+
+  const renderTable = (items, type) => {
+    if (!items) return null;
+    const activeItems = items.filter(item => type === 'attendance' ? item.dateStr : (item.hps !== null && item.hps !== undefined && item.hps !== ''));
+    
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h4 style={{ fontWeight: 600 }}>{type === 'ww' ? 'Written Works' : type === 'pt' ? 'Performance Tasks' : 'Attendance Dates'}</h4>
+          <button className="btn btn-primary btn-sm" onClick={() => handleAddItem(type)}>
+            + Add {type === 'attendance' ? "Today's Date" : 'Item'}
+          </button>
+        </div>
+        {activeItems.length === 0 ? (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
+            No items yet. Click "Add Item" to add one.
+          </div>
+        ) : (
+          <div className="table-wrapper" style={{ maxHeight: 400 }}>
+            <table className="data-table">
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white' }}>
+                <tr>
+                  <th style={{width: 50}}>#</th>
+                  {type !== 'attendance' && <th>HPS</th>}
+                  <th>Label / Term</th>
+                  <th>Date</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeItems.map((item, i) => (
+              <tr key={item.col}>
+                <td>{i + 1}</td>
+                {type !== 'attendance' && (
+                  <td>
+                    <input type="number" min="0" value={item.hps ?? ''} onChange={e => handleUpdate(type, item.col, 'hps', e.target.value ? Number(e.target.value) : null)} style={{ width: 80, padding: 4 }} />
+                  </td>
+                )}
+                <td>
+                  <input type="text" value={type === 'attendance' ? (item.term || '') : (item.label || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'term' : 'label', e.target.value)} style={{ width: 100, padding: 4 }} />
+                </td>
+                <td>
+                  <input type="text" placeholder="e.g. 10/06/2026" value={type === 'attendance' ? (item.dateStr || '') : (item.date || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'dateStr' : 'date', e.target.value)} style={{ width: 120, padding: 4 }} />
+                </td>
+                <td>
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    if (type === 'attendance') {
+                      handleUpdate(type, item.col, 'dateStr', '');
+                      handleUpdate(type, item.col, 'term', '');
+                    } else {
+                      handleUpdate(type, item.col, 'hps', null);
+                      handleUpdate(type, item.col, 'label', '');
+                      handleUpdate(type, item.col, 'date', '');
+                    }
+                  }} style={{ color: 'var(--danger)' }} title="Remove item"><X size={14}/></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: 20 }}>
+      <div className="tabs" style={{ marginBottom: 16 }}>
+        <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
+        <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
+        <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
+      </div>
+      {activeComponentTab !== 'attendance' && (
+        <div className="tabs" style={{ marginBottom: 16 }}>
+          {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
+            headers.columns?.[t] && <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>
+          ))}
+        </div>
+      )}
+      {activeComponentTab === 'ww' && renderTable(headers.columns?.[activeTermTab]?.ww, 'ww')}
+      {activeComponentTab === 'pt' && renderTable(headers.columns?.[activeTermTab]?.pt, 'pt')}
+      {activeComponentTab === 'attendance' && renderTable(headers.attendance, 'attendance')}
+      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+        <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          {saving ? <LoadingSpinner /> : <Save size={14} />} Save Columns
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Grade Edit Mode ──────────────────────────────────────────────────────────
 function GradeEditModal({ classInfo, onClose }) {
   const [students, setStudents] = useState([]);
@@ -141,8 +325,34 @@ function GradeEditModal({ classInfo, onClose }) {
   const [mode, setMode] = useState('table'); // 'table' | 'individual'
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activeTermTab, setActiveTermTab] = useState('Term 1');
-  const [activeComponentTab, setActiveComponentTab] = useState('summary'); // 'summary' | 'ww' | 'pt' | 'exam'
+  const [activeComponentTab, setActiveComponentTab] = useState('summary'); // 'summary' | 'ww' | 'pt' | 'exam' | 'attendance'
+  const [manageColsOpen, setManageColsOpen] = useState(false);
   const [changes, setChanges] = useState({}); // { studentNo: { termName: { key: updObj } } }
+
+  const handleKeyDown = (e, rowIdx, colIdx, maxRow, maxCol) => {
+    if (['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Enter'].includes(e.key)) {
+      e.preventDefault();
+      let nextRow = rowIdx;
+      let nextCol = colIdx;
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        nextRow = Math.min(rowIdx + 1, maxRow);
+      } else if (e.key === 'ArrowUp') {
+        nextRow = Math.max(rowIdx - 1, 0);
+      } else if (e.key === 'ArrowRight') {
+        nextCol = Math.min(colIdx + 1, maxCol);
+      } else if (e.key === 'ArrowLeft') {
+        nextCol = Math.max(colIdx - 1, 0);
+      }
+      
+      if (nextRow !== rowIdx || nextCol !== colIdx) {
+        const nextInput = document.querySelector(`input[data-row="${nextRow}"][data-col="${nextCol}"]`);
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select();
+        }
+      }
+    }
+  };
   const [search, setSearch] = useState('');
 
   const loadClassData = useCallback(() => {
@@ -238,30 +448,50 @@ function GradeEditModal({ classInfo, onClose }) {
     if (!term) return <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No data for {termName}.</p>;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {[['Written Works', term.writtenWorks], ['Performance Tasks', term.performanceTasks], ['Examinations', Object.values(term.exams || {})]].map(([title, items]) => (
+        {[
+          ['Written Works', term.writtenWorks],
+          ['Performance Tasks', term.performanceTasks],
+          ['Examinations', Object.values(term.exams || {})],
+          ['Attendance', student.attendance?.records?.filter(a => a.term === termName.replace('Term ', 'T')) || []]
+        ].map(([title, items]) => (
           items && items.length > 0 ? (
             <div key={title}>
               <h5 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: 10, color: 'var(--text-secondary)' }}>{title}</h5>
               <div className="table-wrapper">
                 <table className="data-table">
                   <thead>
-                    <tr><th>Item</th><th>Max Score (HPS)</th><th>Score</th></tr>
+                    <tr><th>Item</th>{title !== 'Attendance' && <th>Max Score (HPS)</th>}<th>Score / Status</th></tr>
                   </thead>
                   <tbody>
                     {items.map((item, i) => {
-                      const val = getScore(student.studentNo, termName, item.col, item.score);
-                      const changed = val !== item.score;
+                      const val = getScore(student.studentNo, title === 'Attendance' ? 'Attendance' : termName, item.col, title === 'Attendance' ? item.status : item.score);
+                      const changed = val !== (title === 'Attendance' ? item.status : item.score);
                       return (
                         <tr key={i}>
-                          <td style={{ fontWeight: 500 }}>{item.label}</td>
-                          <td style={{ color: 'var(--text-muted)' }}>{item.hps}</td>
+                          <td style={{ fontWeight: 500 }}>{title === 'Attendance' ? item.date : item.label}</td>
+                          {title !== 'Attendance' && <td style={{ color: 'var(--text-muted)' }}>{item.hps}</td>}
                           <td>
-                            <input
-                              type="number" min="0" max={item.hps} step="0.25"
-                              className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
-                              value={val ?? ''}
-                              onChange={e => updateScore(student.studentNo, termName, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
-                            />
+                            {title === 'Attendance' ? (
+                              <input
+                                type="text"
+                                className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
+                                style={{ width: '80px', textAlign: 'center', textTransform: 'uppercase' }}
+                                maxLength="1"
+                                value={val || ''}
+                                title="P: Present, A: Absent, L: Late, E: Excused"
+                                onChange={e => {
+                                  let inputVal = e.target.value.toUpperCase();
+                                  updateScore(student.studentNo, 'Attendance', item.col, item.row, null, null, inputVal);
+                                }}
+                              />
+                            ) : (
+                              <input
+                                type="number" min="0" max={item.hps} step="0.25"
+                                className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
+                                value={val ?? ''}
+                                onChange={e => updateScore(student.studentNo, termName, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
+                              />
+                            )}
                           </td>
                         </tr>
                       );
@@ -287,12 +517,19 @@ function GradeEditModal({ classInfo, onClose }) {
           <button onClick={() => setMode('table')} className={`btn btn-sm ${mode === 'table' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Table View</button>
           <button onClick={() => setMode('individual')} className={`btn btn-sm ${mode === 'individual' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Individual</button>
         </div>
+        <button className="btn btn-secondary btn-sm" onClick={() => setManageColsOpen(true)}>
+          <Settings size={14} /> Manage Activities & Attendance
+        </button>
         {Object.keys(changes).length > 0 && (
           <button className="btn btn-primary btn-sm" onClick={saveAllChanges} disabled={saving}>
             {saving ? <LoadingSpinner /> : <Save size={14} />} Save All ({Object.keys(changes).length})
           </button>
         )}
       </div>
+
+      <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title="Manage Activities & Attendance" size="lg">
+        <ManageColumnsModal classInfo={classInfo} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} />
+      </Modal>
 
       {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><LoadingSpinner size="lg" /></div> : (
         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -346,6 +583,7 @@ function GradeEditModal({ classInfo, onClose }) {
                   <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
                   <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
                   <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('exam')}>Exams</button>
+                  <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
                 </div>
               </div>
 
@@ -362,12 +600,18 @@ function GradeEditModal({ classInfo, onClose }) {
                       ) : (
                         // Component-specific headers
                         (() => {
-                          const itemsObj = students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
-                          const itemsArr = Array.isArray(itemsObj) ? itemsObj : Object.values(itemsObj || {});
+                          let itemsArr = [];
+                          if (activeComponentTab === 'attendance') {
+                            const attRecs = students[0]?.attendance?.records || [];
+                            itemsArr = attRecs.filter(a => a.term === activeTermTab.replace('Term ', 'T'));
+                          } else {
+                            const itemsObj = students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                            itemsArr = Array.isArray(itemsObj) ? itemsObj : Object.values(itemsObj || {});
+                          }
                           return itemsArr.map((item, i) => (
                             <th key={i} style={{ textAlign: 'center', minWidth: 100 }}>
-                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.label}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HPS: {item.hps}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{activeComponentTab === 'attendance' ? item.date : item.label}</div>
+                              {activeComponentTab !== 'attendance' && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HPS: {item.hps}</div>}
                             </th>
                           ));
                         })()
@@ -403,21 +647,52 @@ function GradeEditModal({ classInfo, onClose }) {
                             </>
                           ) : (
                             // Component-specific editable cells
-                            items.map((item, colIdx) => {
-                              const val = getScore(s.studentNo, activeTermTab, item.col, item.score);
-                              const changed = val !== item.score;
-                              return (
-                                <td key={colIdx} style={{ textAlign: 'center' }}>
-                                  <input
-                                    type="number" min="0" max={item.hps} step="0.25"
-                                    className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
-                                    style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
-                                    value={val ?? ''}
-                                    onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
-                                  />
-                                </td>
-                              );
-                            })
+                            (() => {
+                              let items = [];
+                              if (activeComponentTab === 'attendance') {
+                                const attRecs = s.attendance?.records || [];
+                                items = attRecs.filter(a => a.term === activeTermTab.replace('Term ', 'T'));
+                              } else {
+                                const rawItems = s.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                                items = Array.isArray(rawItems) ? rawItems : Object.values(rawItems || {});
+                              }
+                              return items.map((item, colIdx) => {
+                                const val = getScore(s.studentNo, activeComponentTab === 'attendance' ? 'Attendance' : activeTermTab, item.col, activeComponentTab === 'attendance' ? item.status : item.score);
+                                const changed = val !== (activeComponentTab === 'attendance' ? item.status : item.score);
+                                return (
+                                  <td key={colIdx} style={{ textAlign: 'center' }}>
+                                    {activeComponentTab === 'attendance' ? (
+                                      <input
+                                        type="text"
+                                        data-row={i}
+                                        data-col={colIdx}
+                                        className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
+                                        style={{ width: '80px', margin: '0 auto', textAlign: 'center', textTransform: 'uppercase' }}
+                                        maxLength="1"
+                                        value={val || ''}
+                                        title="P: Present, A: Absent, L: Late, E: Excused"
+                                        onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
+                                        onChange={e => {
+                                          let inputVal = e.target.value.toUpperCase();
+                                          updateScore(s.studentNo, 'Attendance', item.col, item.row, null, null, inputVal);
+                                        }}
+                                      />
+                                    ) : (
+                                      <input
+                                        type="number" min="0" max={item.hps} step="0.25"
+                                        data-row={i}
+                                        data-col={colIdx}
+                                        className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
+                                        style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
+                                        value={val ?? ''}
+                                        onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
+                                        onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
+                                      />
+                                    )}
+                                  </td>
+                                );
+                              });
+                            })()
                           )}
                         </tr>
                       );

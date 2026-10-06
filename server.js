@@ -120,7 +120,7 @@ function requireAuth(roles = []) {
 
 // ─── Excel Parsing Helpers ──────────────────────────────────────────────────
 function excelDateToString(serial) {
-  if (!serial || typeof serial !== 'number' || serial < 40000) return serial;
+  if (!serial || typeof serial !== 'number' || serial < 1000) return serial;
   const epoch = new Date(Date.UTC(1899, 11, 30));
   const d = new Date(epoch.getTime() + serial * 86400000);
   return d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -277,7 +277,10 @@ function parseAttendance(ws, studentsList) {
     const studentNo = stu.studentNo;
     const studentName = stu.studentName;
     const records = [];
-    for (const s of sessions) { const val = cell(r, s.col); if (val && val !== '--') records.push({ date: s.date, term: s.term, status: val }); }
+    for (const s of sessions) {
+      const val = cell(r, s.col);
+      records.push({ date: s.date, term: s.term, status: (val && val !== '--') ? val : null, col: s.col, row: r });
+    }
     students[String(studentNo)] = {
       studentName, records,
       summary: {
@@ -696,10 +699,127 @@ app.get('/api/teacher/class/:filename/full', requireAuth(['teacher']), (req, res
   const classStudents = [];
   for (const [studentNo, data] of Object.entries(studentsMap)) {
     const sub = data.subjects.find(s => s.info.fileName === filename);
-    if (sub) classStudents.push({ studentNo, name: data.name, terms: sub.terms, info: sub.info });
+    if (sub) classStudents.push({ studentNo, name: data.name, terms: sub.terms, info: sub.info, attendance: sub.attendance });
   }
   classStudents.sort((a, b) => a.name.localeCompare(b.name));
   res.json({ success: true, students: classStudents });
+});
+
+app.get('/api/test-route', (req, res) => res.send('WORKS!'));
+
+app.get('/api/teacher/class/:filename/headers', requireAuth(['teacher']), (req, res) => {
+  const teacherId = req.session.userId;
+  const filename = req.params.filename;
+  if (!teachersConfig[teacherId]?.files?.includes(filename)) return res.status(403).json({ error: 'Forbidden.' });
+
+  try {
+    const XLSX = require('xlsx');
+    const fpath = path.join(GRADES_DIR, filename);
+    const wb = XLSX.readFile(fpath);
+    const terms = ['Term 1', 'Term 2', 'Term 3', 'Term 4'];
+    const columns = {};
+    
+    terms.forEach(term => {
+      const ws = wb.Sheets[term];
+      if (!ws) return;
+      const cell = (r, c) => {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        return ws[addr] ? ws[addr].v : null;
+      };
+      
+      const ww = [], pt = [];
+      for (let c = 4; c <= 23; c++) {
+        ww.push({ col: c, hps: cell(5, c) || null, date: excelDateToString(cell(6, c)), label: String(cell(7, c) || `WW${c - 3}`) });
+      }
+      for (let c = 27; c <= 41; c++) {
+        pt.push({ col: c, hps: cell(5, c) || null, date: excelDateToString(cell(6, c)), label: String(cell(7, c) || `PT${c - 26}`) });
+      }
+      columns[term] = { ww, pt };
+    });
+
+    const attWs = wb.Sheets['Attendance'];
+    const attendance = [];
+    if (attWs) {
+      const cell = (r, c) => { const a = XLSX.utils.encode_cell({ r, c }); return attWs[a] ? attWs[a].v : null; };
+      for (let c = 4; c <= 103; c++) {
+        attendance.push({ col: c, dateVal: cell(2, c), dateStr: excelDateToString(cell(2, c)), term: cell(4, c) });
+      }
+    }
+    
+    res.json({ success: true, columns, attendance });
+  } catch (err) {
+    console.error('HEADERS ENDPOINT ERROR:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/teacher/class/:filename/headers', requireAuth(['teacher']), async (req, res) => {
+  const teacherId = req.session.userId;
+  const { filename } = req.params;
+  const { updates, attendanceUpdates } = req.body;
+  if (!teachersConfig[teacherId]?.files?.includes(filename)) return res.status(403).json({ error: 'Forbidden.' });
+
+  try {
+    const XlsxPopulate = require('xlsx-populate');
+    const fpath = path.join(GRADES_DIR, filename);
+    const workbook = await XlsxPopulate.fromFileAsync(fpath);
+
+    if (updates && updates.length > 0) {
+      for (const update of updates) {
+        const sheet = workbook.sheet(update.termName);
+        if (sheet) {
+          if (update.hps === null || update.hps === '') {
+            sheet.cell(6, update.col + 1).value(null);
+            sheet.cell(7, update.col + 1).value(null);
+            sheet.cell(8, update.col + 1).value(null);
+            for (let r = 8; r <= 71; r++) {
+              sheet.cell(r, update.col + 1).value(null);
+            }
+          } else {
+            sheet.cell(6, update.col + 1).value(Number(update.hps));
+            if (update.dateStr) {
+               const d = new Date(update.dateStr);
+               if (!isNaN(d.getTime())) sheet.cell(7, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+            }
+            if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+          }
+        }
+      }
+    }
+
+    if (attendanceUpdates && attendanceUpdates.length > 0) {
+      const attSheet = workbook.sheet('Attendance');
+      if (attSheet) {
+        for (const update of attendanceUpdates) {
+          if (update.dateStr === null || update.dateStr === '') {
+             attSheet.cell(3, update.col + 1).value(null);
+             attSheet.cell(4, update.col + 1).value(null);
+             attSheet.cell(5, update.col + 1).value(null);
+             for (let r = 6; r <= 70; r++) {
+               attSheet.cell(r, update.col + 1).value(null);
+             }
+          } else {
+             const d = new Date(update.dateStr);
+             if (!isNaN(d.getTime())) {
+               attSheet.cell(3, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+               attSheet.cell(4, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+             }
+             if (update.term === '') {
+                attSheet.cell(5, update.col + 1).value(null);
+             } else if (update.term) {
+                attSheet.cell(5, update.col + 1).value(update.term);
+             }
+          }
+        }
+      }
+    }
+
+    await workbook.toFileAsync(fpath);
+    loadAllData();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher']), async (req, res) => {
@@ -719,13 +839,21 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
       const sheet = workbook.sheet(update.termName);
       if (sheet) {
         const c = sheet.cell(update.row + 1, update.col + 1);
-        c.value((update.value === '' || update.value === null) ? null : Number(update.value));
-        if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
-        if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+        if (update.termName === 'Attendance') {
+          c.value((update.value === '' || update.value === null) ? null : update.value);
+        } else {
+          c.value((update.value === '' || update.value === null) ? null : Number(update.value));
+          if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
+          if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+        }
         
         if (studentsMap[studentNo]) {
           const sub = studentsMap[studentNo].subjects.find(s => s.info.fileName === filename);
-          if (sub && sub.terms[update.termName]) {
+          if (sub && update.termName === 'Attendance' && sub.attendance) {
+             const record = sub.attendance.records.find(r => r.col === update.col); // wait, parseAttendance records don't have col saved! Let's check parseAttendance.
+             // I'll just rely on `loadAllData()` explicitly being called after await workbook.toFileAsync(fpath); 
+             // That's much safer than trying to keep track of attendance manually here.
+          } else if (sub && sub.terms[update.termName]) {
             const term = sub.terms[update.termName];
             for (const key of ['performanceTasks', 'writtenWorks']) {
               if (term[key]) {
@@ -825,6 +953,7 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
       calcPr.attributes.forceFullCalc = 1;
     }
     await workbook.toFileAsync(fpath);
+    loadAllData();
     res.json({ success: true, message: 'Scores updated.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
