@@ -1,1 +1,25 @@
-{}
+{
+  "11 ASSH & STEM - Gen Math.xlsx": {
+    "releaseFinals": {
+      "Term 1": true,
+      "Term 2": false,
+      "Term 3": false,
+      "Term 4": false
+    },
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "blockedStudents": []
+  },
+  "11 BE & ICT - Gen Math.xlsx": {
+    "hideTerm1": true,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "releaseFinals": {
+      "Term 2": false
+    }
+  }
+}

@@ -629,22 +629,10 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
     if (cs.blockedStudents?.includes(studentNo)) {
       sub.isBlocked = true; sub.terms = {}; sub.gradingSummary = null; sub.attendance = null;
     } else {
-      if (cs.hideTerm1) {
-        if (sub.terms['Term 1']) delete sub.terms['Term 1'];
-        if (sub.gradingSummary) sub.gradingSummary.term1 = null;
-      }
-      if (cs.hideTerm2) {
-        if (sub.terms['Term 2']) delete sub.terms['Term 2'];
-        if (sub.gradingSummary) sub.gradingSummary.term2 = null;
-      }
-      if (cs.hideTerm3) {
-        if (sub.terms['Term 3']) delete sub.terms['Term 3'];
-        if (sub.gradingSummary) sub.gradingSummary.term3 = null;
-      }
-      if (cs.hideTerm4) {
-        if (sub.terms['Term 4']) delete sub.terms['Term 4'];
-        if (sub.gradingSummary) sub.gradingSummary.term4 = null;
-      }
+      if (cs.hideTerm1 && sub.terms['Term 1']) delete sub.terms['Term 1'];
+      if (cs.hideTerm2 && sub.terms['Term 2']) delete sub.terms['Term 2'];
+      if (cs.hideTerm3 && sub.terms['Term 3']) delete sub.terms['Term 3'];
+      if (cs.hideTerm4 && sub.terms['Term 4']) delete sub.terms['Term 4'];
       if (cs.hideAttendance) sub.attendance = null;
     }
     // Apply global visible terms filter
@@ -1306,3 +1294,5 @@ app.listen(PORT, () => {
   console.log(`📁 Grades: ${GRADES_DIR}`);
   console.log(`👥 Students loaded: ${Object.keys(studentsMap).length}\n`);
 });
+
+module.exports = { studentsMap, classSettingsConfig };

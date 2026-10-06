@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
+import { useAuth } from '../../App';
+import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle } from 'lucide-react';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
@@ -37,24 +39,35 @@ function OverviewPage() {
 
   return (
     <div className="page-content fade-in">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16, gap: 10 }}>
+        <a className="btn btn-primary btn-sm" href="/api/admin/backup" download>
+          <HardDrive size={14} /> Download Backup
+        </a>
         <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
           {syncing ? <LoadingSpinner /> : <RefreshCw size={14} />} Sync Data
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid-4" style={{ marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 32 }}>
         {[
           { label: 'Total Students', value: ov.totalStudents || 0, icon: Users, colorClass: 'brand' },
           { label: 'Total Subjects', value: ov.totalSubjects || 0, icon: BookOpen, colorClass: 'green' },
           { label: 'Files Loaded', value: stats?.status?.filesLoaded || 0, icon: FileUp, colorClass: 'blue' },
           { label: 'Last Sync', value: stats?.status?.lastSync ? new Date(stats.status.lastSync).toLocaleTimeString() : '—', icon: RefreshCw, colorClass: 'amber' },
         ].map((s, i) => (
-          <div key={i} className="stat-card">
-            <div className={`stat-icon ${s.colorClass}`}><s.icon size={20} /></div>
-            <div className="stat-value" style={{ fontSize: '1.75rem' }}>{s.value}</div>
-            <div className="stat-label">{s.label}</div>
+          <div key={i} className="stat-card" style={{ 
+            transition: 'transform 0.2s, box-shadow 0.2s', 
+            cursor: 'default',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.05)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}>
+            <div className={`stat-icon ${s.colorClass}`}><s.icon size={24} /></div>
+            <div className="stat-value" style={{ fontSize: '2rem', fontWeight: 800, marginTop: 8, marginBottom: 4 }}>{s.value}</div>
+            <div className="stat-label" style={{ fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase', fontSize: '0.75rem' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -99,6 +112,7 @@ function OverviewPage() {
 
 // ─── Teachers Management ───────────────────────────────────────────────────────
 function TeachersPage() {
+  const { login } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // 'add' | 'edit' | 'classes'
@@ -124,6 +138,24 @@ function TeachersPage() {
     setSelected(t); setModal('classes'); setTeacherClasses([]);
     try { const r = await api.get(`/admin/teacher/${t.username}/classes`); setTeacherClasses(r.data.classes || []); }
     catch { toast.error('Failed to load teacher classes.'); }
+  };
+
+  const toggleStatus = async (t) => {
+    try {
+      const newStatus = t.status === 'suspended' ? 'active' : 'suspended';
+      await api.put(`/admin/users/${t.username}/status`, { status: newStatus });
+      toast.success('Status updated');
+      load();
+    } catch { toast.error('Update failed'); }
+  };
+
+  const handleImpersonate = async (t) => {
+    try {
+      const res = await api.post(`/admin/impersonate/teacher/${t.username}`);
+      toast.success('Impersonating teacher');
+      localStorage.setItem('admin_return_token', localStorage.getItem('gp_token'));
+      login(res.data.token, { id: t.username, name: t.name, department: t.department }, 'teacher');
+    } catch { toast.error('Impersonation failed'); }
   };
 
   const handleSave = async () => {
@@ -168,14 +200,14 @@ function TeachersPage() {
         <div className="card">
           <div className="table-wrapper" style={{ borderRadius: 0 }}>
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Username</th><th>Department</th><th>Email</th><th>Classes</th><th>Added</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>Username</th><th>Status</th><th>Department</th><th>Classes</th><th>Added</th><th>Actions</th></tr></thead>
               <tbody>
                 {filtered.map((t, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 600 }}>{t.name}</td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{t.username}</td>
+                    <td><span className={`badge ${t.status === 'suspended' ? 'badge-error' : 'badge-success'}`}>{t.status || 'active'}</span></td>
                     <td>{t.department || '—'}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{t.email || '—'}</td>
                     <td>
                       <button className="btn btn-ghost btn-sm" onClick={() => openClasses(t)}>
                         <Eye size={13} /> {(t.files || []).length} classes
@@ -186,6 +218,8 @@ function TeachersPage() {
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)}><Edit3 size={13} /></button>
                         <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(t)} style={{ color: 'var(--color-error)' }}><Trash2 size={13} /></button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleImpersonate(t)} title="Impersonate"><UserCheck size={13}/></button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => toggleStatus(t)} title={t.status === 'suspended' ? 'Activate' : 'Suspend'}><Shield size={13}/></button>
                       </div>
                     </td>
                   </tr>
@@ -341,6 +375,21 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({});
+  const [logs, setLogs] = useState([]);
+  const [sessions, setSessions] = useState({});
+
+  useEffect(() => {
+    api.get('/admin/activity-logs').then(r => setLogs(r.data.logs || []));
+    api.get('/admin/sessions').then(r => setSessions(r.data.sessions || {}));
+  }, []);
+
+  const revokeSession = async (token) => {
+    try {
+      await api.delete(`/admin/sessions/${token}`);
+      toast.success('Session revoked');
+      setSessions(s => { const ns = {...s}; delete ns[token]; return ns; });
+    } catch { toast.error('Failed to revoke session'); }
+  };
 
   useEffect(() => {
     api.get('/settings').then(r => { setSettings(r.data); setForm({ ...r.data, adminPassword: '' }); }).catch(() => toast.error('Failed to load settings.')).finally(() => setLoading(false));
@@ -378,9 +427,25 @@ function SettingsPage() {
               <input className="form-input" type="password" value={form.adminPassword || ''} onChange={e => setForm(f => ({ ...f, adminPassword: e.target.value }))} placeholder="New admin password" />
             </div>
             <div className="divider" />
+            <div className="form-group">
+              <label className="form-label">School Address</label>
+              <input className="form-input" type="text" value={form.schoolInfo?.address || ''} onChange={e => setForm(f => ({ ...f, schoolInfo: { ...f.schoolInfo, address: e.target.value } }))} placeholder="Address" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Global Notification Banner</label>
+              <div style={{display: 'flex', gap: 10}}>
+                <input className="form-input" style={{flex: 1}} type="text" value={form.notification?.message || ''} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, message: e.target.value } }))} placeholder="Announcement text" />
+                <label className="toggle" style={{marginTop: 8}}>
+                  <input type="checkbox" checked={form.notification?.enabled || false} onChange={e => setForm(f => ({ ...f, notification: { ...f.notification, enabled: e.target.checked } }))} />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+            </div>
+
+            <div className="divider" />
             <div>
-              <p className="form-label" style={{ marginBottom: 12 }}>Visible Terms (to students)</p>
-              {['Term 1', 'Term 2', 'Term 3'].map(t => (
+              <p className="form-label" style={{ marginBottom: 12 }}>Visible Terms (Full Data)</p>
+              {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
                 <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontWeight: 500 }}>{t}</span>
                   <label className="toggle">
@@ -390,6 +455,7 @@ function SettingsPage() {
                 </div>
               ))}
             </div>
+
             <div>
               <p className="form-label" style={{ marginBottom: 12 }}>Features</p>
               {[['grades', 'Grade Viewing'], ['attendance', 'Attendance Viewing']].map(([k, label]) => (
@@ -407,9 +473,45 @@ function SettingsPage() {
             </button>
           </div>
         </div>
+        <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
         <div className="card">
-          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Students Overview</h3></div>
-          <StudentsOverview />
+          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Active Sessions</h3></div>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <thead><tr><th>User</th><th>Role</th><th>Active Since</th><th>Action</th></tr></thead>
+              <tbody>
+                {Object.entries(sessions).map(([tok, s]) => (
+                  <tr key={tok}>
+                    <td>{s.meta?.name || s.userId}</td>
+                    <td>{s.role}</td>
+                    <td style={{fontSize:'0.8rem'}}>{new Date(s.createdAt).toLocaleString()}</td>
+                    <td><button className="btn btn-danger btn-sm" onClick={() => revokeSession(tok)}>Revoke</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Activity Logs</h3></div>
+          <div className="table-wrapper" style={{maxHeight: 300, overflow: 'auto'}}>
+            <table className="data-table">
+              <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+              <tbody>
+                {logs.slice(0, 50).map(l => (
+                  <tr key={l.id}>
+                    <td style={{fontSize:'0.8rem'}}>{new Date(l.timestamp).toLocaleString()}</td>
+                    <td>{l.userId} ({l.role})</td>
+                    <td>{l.action}</td>
+                    <td style={{fontSize:'0.8rem', color: 'var(--text-muted)'}}>{l.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         </div>
       </div>
     </div>
@@ -417,6 +519,7 @@ function SettingsPage() {
 }
 
 function StudentsOverview() {
+  const { login } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -427,6 +530,24 @@ function StudentsOverview() {
   useEffect(() => {
     api.get('/admin/students').then(r => setStudents(r.data.students || [])).catch(() => {}).finally(() => setLoading(false));
   }, []);
+
+  const toggleStatus = async (s) => {
+    try {
+      const newStatus = s.status === 'suspended' ? 'active' : 'suspended';
+      await api.put(`/admin/users/${s.studentNo}/status`, { status: newStatus });
+      toast.success('Status updated');
+      setStudents(prev => prev.map(st => st.studentNo === s.studentNo ? { ...st, status: newStatus } : st));
+    } catch { toast.error('Update failed'); }
+  };
+
+  const handleImpersonate = async (s) => {
+    try {
+      const res = await api.post(`/admin/impersonate/student/${s.studentNo}`);
+      toast.success('Impersonating student');
+      localStorage.setItem('admin_return_token', localStorage.getItem('gp_token'));
+      login(res.data.token, { id: s.studentNo, name: s.name }, 'student');
+    } catch { toast.error('Impersonation failed'); }
+  };
 
   const handleSelectStudent = async (studentNo) => {
     setSelectedStudent(studentNo);
@@ -455,17 +576,26 @@ function StudentsOverview() {
         {loading ? <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><LoadingSpinner /></div> : (
           <div style={{ maxHeight: 400, overflow: 'auto' }}>
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Student No.</th><th>Subjects</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects</th><th>Action</th></tr></thead>
               <tbody>
                 {filtered.slice(0, 50).map((s, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 500 }}>{s.name}</td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
+                    <td><span className={`badge ${s.status === 'suspended' ? 'badge-error' : 'badge-success'}`}>{s.status || 'active'}</span></td>
                     <td><span className="badge badge-neutral">{s.subjectCount}</span></td>
                     <td>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleSelectStudent(s.studentNo)}>
-                        <Eye size={13} /> View
+                      <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleSelectStudent(s.studentNo)} title="View">
+                        <Eye size={13} />
                       </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleImpersonate(s)} title="Impersonate">
+                        <UserCheck size={13} />
+                      </button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => toggleStatus(s)} title={s.status === 'suspended' ? 'Activate' : 'Suspend'}>
+                        <Shield size={13} />
+                      </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -557,6 +687,7 @@ export default function AdminDashboard() {
     { type: 'section', label: 'Dashboard' },
     { icon: LayoutDashboard, label: 'Overview', active: page === 'overview' || page === '', onClick: () => navigate('/admin') },
     { icon: Users, label: 'Teachers', active: page === 'teachers', onClick: () => navigate('/admin/teachers') },
+    { icon: Users, label: 'Students', active: page === 'students', onClick: () => navigate('/admin/students') },
     { icon: FileUp, label: 'Templates', active: page === 'templates', onClick: () => navigate('/admin/templates') },
     { type: 'section', label: 'System' },
     { icon: Settings, label: 'Settings', active: page === 'settings', onClick: () => navigate('/admin/settings') },
@@ -567,6 +698,7 @@ export default function AdminDashboard() {
       <Routes>
         <Route path="/" element={<><PageHeader title="Dashboard Overview" subtitle="System statistics and data overview" /><OverviewPage /></>} />
         <Route path="/teachers" element={<><PageHeader title="Teacher Management" subtitle="Add, edit, and manage teacher accounts" /><TeachersPage /></>} />
+        <Route path="/students" element={<><PageHeader title="Students Overview" subtitle="View and manage students" /><div className="page-content fade-in"><div className="card"><div className="card-header"><h3 style={{ fontSize: '1rem' }}>Students Overview</h3></div><StudentsOverview /></div></div></>} />
         <Route path="/templates" element={<><PageHeader title="Grade Templates" subtitle="Manage Excel grade sheet templates for teachers" /><TemplatesPage /></>} />
         <Route path="/settings" element={<><PageHeader title="Settings" subtitle="Configure portal settings and visibility" /><SettingsPage /></>} />
       </Routes>

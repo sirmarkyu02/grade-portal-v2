@@ -86,7 +86,7 @@ function ClassListPage({ onSelectClass }) {
         </div>
       </div>
 
-      <div className="grid-2" style={{ alignItems: 'start', gap: 32 }}>
+      <div className="grid-2 teacher-dashboard-grid" style={{ alignItems: 'start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>My Classes</h3>
           {classes.length === 0 ? (
@@ -97,7 +97,7 @@ function ClassListPage({ onSelectClass }) {
                 <div key={i} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }} onClick={() => onSelectClass(cls)}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-lg)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                     <div style={{ display: 'flex', gap: 16 }}>
                       <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--brand-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--brand-600)' }}>
                         <BookOpen size={24} />
@@ -118,7 +118,8 @@ function ClassListPage({ onSelectClass }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        
+        <div className="upload-section" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>Upload / Re-upload</h3>
           <div className="card" style={{ padding: 24, background: 'var(--brand-50)', border: '1px dashed var(--brand-300)', boxShadow: 'none' }}>
             <DropUploader onUpload={handleUpload} loading={uploadLoading} />
@@ -317,7 +318,122 @@ function ManageColumnsModal({ classInfo, onClose, onSaved }) {
   );
 }
 
+
+function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
+  const [form, setForm] = useState(() => {
+    return {
+      hideTerm1: false,
+      hideTerm2: true,
+      hideTerm3: true,
+      hideTerm4: true,
+      ...settings
+    };
+  });
+  const [saving, setSaving] = useState(false);
+
+  const updateSetting = async (key, val, subKey) => {
+    let newForm = { ...form };
+    if (subKey) {
+      newForm[key] = { ...(newForm[key] || {}), [subKey]: val };
+    } else {
+      newForm[key] = val;
+    }
+    setForm(newForm);
+    
+    // Auto-save
+    try {
+      await api.put(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/settings`, newForm);
+      onSaved();
+    } catch {
+      toast.error('Failed to auto-save settings');
+    }
+  };
+
+  const terms = [
+    { id: 1, name: 'Term 1', hideKey: 'hideTerm1' },
+    { id: 2, name: 'Term 2', hideKey: 'hideTerm2' },
+    { id: 3, name: 'Term 3', hideKey: 'hideTerm3' },
+    { id: 4, name: 'Term 4', hideKey: 'hideTerm4' }
+  ];
+
+  return (
+    <div style={{ padding: '24px 32px' }}>
+      <h3 style={{ marginBottom: 8, fontSize: '1.25rem', fontWeight: 600 }}>Term & Grade Visibility Options</h3>
+      <p style={{ color: 'var(--text-muted)', marginBottom: 24, fontSize: '0.9rem', lineHeight: 1.5 }}>
+        Manage what students can see in their grade portal. You can hide an entire term (all scores and grades) or just hide the final calculated grade for that term.
+      </p>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 8 }}>
+        {terms.map(t => {
+          const isTermHidden = form[t.hideKey] === true;
+          const isFinalReleased = form.releaseFinals?.[t.name] !== false;
+
+          return (
+            <div key={t.id} style={{
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 16,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              opacity: isTermHidden ? 0.75 : 1,
+              transition: 'all 0.2s ease'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', color: isTermHidden ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                    {t.name}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    {isTermHidden ? 'Term is currently hidden from students.' : 'Students can see their quiz/activity scores.'}
+                  </div>
+                </div>
+                <label className="toggle" title={`Toggle ${t.name} Visibility`}>
+                  <input 
+                    type="checkbox" 
+                    checked={!isTermHidden} 
+                    onChange={e => updateSetting(t.hideKey, !e.target.checked)} 
+                  />
+                  <span className="toggle-slider" />
+                </label>
+              </div>
+
+              {!isTermHidden && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  paddingTop: 16,
+                  borderTop: '1px dashed var(--border)' 
+                }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Show Final Grade to Students
+                  </span>
+                  <label className="toggle toggle-sm">
+                    <input 
+                      type="checkbox" 
+                      checked={isFinalReleased} 
+                      onChange={e => updateSetting('releaseFinals', e.target.checked, t.name)} 
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end' }}>
+        <button className="btn btn-ghost" onClick={onClose}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Grade Edit Mode ──────────────────────────────────────────────────────────
+
 function GradeEditModal({ classInfo, onClose }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -327,6 +443,8 @@ function GradeEditModal({ classInfo, onClose }) {
   const [activeTermTab, setActiveTermTab] = useState('Term 1');
   const [activeComponentTab, setActiveComponentTab] = useState('summary'); // 'summary' | 'ww' | 'pt' | 'exam' | 'attendance'
   const [manageColsOpen, setManageColsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [classSettings, setClassSettings] = useState({});
   const [changes, setChanges] = useState({}); // { studentNo: { termName: { key: updObj } } }
 
   const handleKeyDown = (e, rowIdx, colIdx, maxRow, maxCol) => {
@@ -360,6 +478,7 @@ function GradeEditModal({ classInfo, onClose }) {
       .then(r => {
         const newStudents = r.data.students || [];
         setStudents(newStudents);
+        setClassSettings(r.data.settings || {});
         setSelectedStudent(prev => {
           if (!prev) return prev;
           return newStudents.find(s => s.studentNo === prev.studentNo) || prev;
@@ -520,6 +639,9 @@ function GradeEditModal({ classInfo, onClose }) {
         <button className="btn btn-secondary btn-sm" onClick={() => setManageColsOpen(true)}>
           <Settings size={14} /> Manage Activities & Attendance
         </button>
+        <button className="btn btn-secondary btn-sm" onClick={() => setSettingsOpen(true)}>
+          <Settings size={14} /> Class Settings
+        </button>
         {Object.keys(changes).length > 0 && (
           <button className="btn btn-primary btn-sm" onClick={saveAllChanges} disabled={saving}>
             {saving ? <LoadingSpinner /> : <Save size={14} />} Save All ({Object.keys(changes).length})
@@ -529,6 +651,9 @@ function GradeEditModal({ classInfo, onClose }) {
 
       <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title="Manage Activities & Attendance" size="lg">
         <ManageColumnsModal classInfo={classInfo} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} />
+      </Modal>
+      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Class Settings" size="md">
+        <ClassSettingsModal classInfo={classInfo} settings={classSettings} onClose={() => setSettingsOpen(false)} onSaved={() => { loadClassData(); }} />
       </Modal>
 
       {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><LoadingSpinner size="lg" /></div> : (

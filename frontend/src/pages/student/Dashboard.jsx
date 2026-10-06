@@ -47,21 +47,53 @@ function AttendanceView({ attendance }) {
 
 // ─── Grades for a subject ─────────────────────────────────────────────────────
 function SubjectGrades({ subject }) {
-  const [activeTab, setActiveTab] = useState('Term 1');
   const termNames = Object.keys(subject.terms || {});
+  const [activeTab, setActiveTab] = useState(termNames.length > 0 ? termNames[0] : 'Term 1');
+
+  useEffect(() => {
+    if (termNames.length > 0 && !termNames.includes(activeTab)) {
+      setActiveTab(termNames[0]);
+    }
+  }, [termNames, activeTab]);
+
   if (termNames.length === 0) return <div className="empty-state"><p className="empty-desc">No grade data available for this subject yet.</p></div>;
 
   const term = subject.terms[activeTab];
+  if (!term) return null;
 
   const renderScoreTable = (items, label) => {
     if (!items || items.length === 0) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No {label} recorded.</p>;
+    
+    const hasWeights = items.some(i => typeof i.weight === 'number');
     const total = items.reduce((s, i) => s + (i.hps || 0), 0);
     const scored = items.reduce((s, i) => s + (i.score !== null && i.score !== undefined && i.score !== '' ? Number(i.score) : 0), 0);
+
+    let finalPct = 0;
+    if (hasWeights) {
+      items.forEach(i => {
+        if (i.score !== null && i.score !== undefined && i.score !== '') {
+          const ps = i.hps > 0 ? (Number(i.score) / i.hps) * 100 : 0;
+          finalPct += ps * (i.weight || 0);
+        }
+      });
+    } else {
+      finalPct = total > 0 ? (scored / total) * 100 : 0;
+    }
+
     return (
       <div>
         <div className="table-wrapper">
           <table className="data-table">
-            <thead><tr><th>Item</th><th>Date</th><th>Score</th><th>Max</th><th>%</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Max</th>
+                {hasWeights && <th>Weight</th>}
+                <th>%</th>
+              </tr>
+            </thead>
             <tbody>
               {items.map((item, i) => {
                 const pct = item.hps > 0 && item.score !== null && item.score !== '' ? Math.round((Number(item.score) / item.hps) * 100) : null;
@@ -71,15 +103,17 @@ function SubjectGrades({ subject }) {
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{item.date || '—'}</td>
                     <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{item.score ?? '—'}</span></td>
                     <td style={{ color: 'var(--text-muted)' }}>{item.hps}</td>
+                    {hasWeights && <td style={{ color: 'var(--text-muted)' }}>{typeof item.weight === 'number' ? `${Math.round(item.weight * 100)}%` : '—'}</td>}
                     <td>{pct !== null ? <span className={`badge ${pct >= 75 ? 'badge-success' : pct >= 50 ? 'badge-warning' : 'badge-error'}`}>{pct}%</span> : '—'}</td>
                   </tr>
                 );
               })}
               <tr style={{ fontWeight: 700, background: 'var(--grad-soft)' }}>
                 <td colSpan={2}><strong>Total</strong></td>
-                <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{scored}</span></td>
-                <td>{total}</td>
-                <td>{total > 0 ? <span className="badge badge-brand">{Math.round((scored / total) * 100)}%</span> : '—'}</td>
+                <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{hasWeights ? '—' : scored}</span></td>
+                <td>{hasWeights ? '—' : total}</td>
+                {hasWeights && <td><strong>100%</strong></td>}
+                <td>{finalPct > 0 ? <span className="badge badge-brand">{Math.round(finalPct)}%</span> : '—'}</td>
               </tr>
             </tbody>
           </table>
@@ -164,38 +198,39 @@ function OverviewPage({ studentData, profile }) {
   const { student } = studentData;
   const subjects = student.subjects || [];
   const totalSubjects = subjects.length;
-  const passedSubjects = subjects.filter(s => s.gradingSummary?.remarks?.toLowerCase().includes('pass')).length;
+  const passedSubjects = subjects.filter(s => {
+    const gs = s.gradingSummary;
+    if (!gs) return false;
+    if (gs.remarks) return gs.remarks.toLowerCase().includes('pass');
+    const grade = gs.finalGrade ?? gs.term3 ?? gs.term2 ?? gs.term1;
+    return grade !== undefined && grade !== null && Number(grade) >= 75;
+  }).length;
+
+  const needsAttention = subjects.filter(s => {
+    const gs = s.gradingSummary;
+    if (!gs) return false;
+    if (gs.remarks) return gs.remarks.toLowerCase().includes('fail') || gs.remarks.toLowerCase().includes('needs attention');
+    const grade = gs.finalGrade ?? gs.term3 ?? gs.term2 ?? gs.term1;
+    return grade !== undefined && grade !== null && Number(grade) < 75;
+  }).length;
 
   return (
     <div className="page-content fade-in">
       {/* Welcome banner */}
-      <div style={{ 
-        borderRadius: 24, 
-        background: 'linear-gradient(135deg, var(--violet-600) 0%, var(--brand-500) 100%)', 
-        padding: '36px 40px', 
-        marginBottom: 32, 
-        color: 'white', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        gap: 16, 
-        overflow: 'hidden', 
-        position: 'relative',
-        boxShadow: 'var(--shadow-brand)'
-      }}>
-        <div className="orb" style={{ width: 300, height: 300, top: -120, right: -40, opacity: 0.15, background: 'white' }} />
-        <div className="orb" style={{ width: 200, height: 200, bottom: -80, left: 20, opacity: 0.1, background: 'white', animationDuration: '15s' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <p style={{ opacity: 0.9, fontSize: '0.9375rem', marginBottom: 6, fontWeight: 500, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Good day,</p>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 8, letterSpacing: '-0.02em' }}>{student.name}</h2>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: 20, backdropFilter: 'blur(10px)' }}>
+      <div className="welcome-banner">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="welcome-content">
+          <p className="welcome-greeting">Good day,</p>
+          <h2 className="welcome-name">{student.name}</h2>
+          <div className="welcome-id">
             <User size={14} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{student.studentNo}</span>
+            <span>{student.studentNo}</span>
           </div>
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1, textShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>{totalSubjects}</div>
-          <div style={{ opacity: 0.9, fontSize: '1rem', fontWeight: 500, marginTop: 4 }}>Subject{totalSubjects !== 1 ? 's' : ''} Enrolled</div>
+        <div className="welcome-stats">
+          <div className="welcome-count">{totalSubjects}</div>
+          <div className="welcome-label">Subject{totalSubjects !== 1 ? 's' : ''} Enrolled</div>
         </div>
       </div>
 
@@ -213,7 +248,7 @@ function OverviewPage({ studentData, profile }) {
         </div>
         <div className="stat-card" style={{ background: 'linear-gradient(to bottom, #ffffff, #fef2f2)' }}>
           <div className="stat-icon amber" style={{ background: '#fee2e2', color: '#dc2626' }}><Activity size={22} /></div>
-          <div className="stat-value" style={{ color: '#dc2626' }}>{totalSubjects - passedSubjects}</div>
+          <div className="stat-value" style={{ color: '#dc2626' }}>{needsAttention}</div>
           <div className="stat-label">Needs Attention</div>
         </div>
         <div className="stat-card" style={{ background: 'linear-gradient(to bottom, #ffffff, #eff6ff)' }}>
@@ -233,8 +268,8 @@ function OverviewPage({ studentData, profile }) {
             {subjects.map((sub, i) => {
               const gs = sub.gradingSummary;
               return (
-                <div key={i} className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ display: 'flex', align: 'center', gap: 16 }}>
+                <div key={i} className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--violet-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--violet-600)' }}>
                       <BookOpen size={24} />
                     </div>
@@ -243,7 +278,7 @@ function OverviewPage({ studentData, profile }) {
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500 }}>{sub.info.section} • {sub.info.instructor}</p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
                     {gs ? (
                       <>
                         {['term1', 'term2', 'term3'].map(k => gs[k] ? (
@@ -288,7 +323,7 @@ function SubjectPage({ studentData }) {
               <div key={i} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setSelected(i)}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--grad-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <BookOpen size={20} color="var(--violet-600)" />
@@ -301,7 +336,7 @@ function SubjectPage({ studentData }) {
                       </p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {sub.gradingSummary?.finalGrade && <GradePill grade={sub.gradingSummary.finalGrade} />}
                     {sub.gradingSummary?.remarks && <StatusBadge status={sub.gradingSummary.remarks} />}
                     <span style={{ color: 'var(--violet-400)' }}>›</span>
@@ -347,11 +382,10 @@ function StudentAttendancePage({ studentData }) {
 
 // ─── Profile Page ─────────────────────────────────────────────────────────────
 function ProfilePage({ user, profile, onRefresh }) {
-  const [form, setForm] = useState({ contactNo: profile?.contactNo || '', parentName: profile?.parentName || '', parentContactNo: profile?.parentContactNo || '', address: profile?.address || '', currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [form, setForm] = useState({ contactNo: profile?.contactNo || '', parentName: profile?.parentName || '', parentContactNo: profile?.parentContactNo || '', address: profile?.address || '' });
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(profile?.photo || null);
   const [loading, setLoading] = useState(false);
-  const [pwLoading, setPwLoading] = useState(false);
   const fileRef = React.useRef();
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -370,6 +404,53 @@ function ProfilePage({ user, profile, onRefresh }) {
     } finally { setLoading(false); }
   };
 
+  const initials = (n) => n ? (n.trim().split(/\s+/).map(p => p[0]).join('').toUpperCase().slice(0, 2)) : '?';
+
+  return (
+    <div className="page-content fade-in">
+      <h2 style={{ fontWeight: 800, marginBottom: 24 }}>My Profile</h2>
+      <div className="card">
+        <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Personal Information</h3></div>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div className="photo-upload" style={{ width: 96, height: 96 }} onClick={() => fileRef.current.click()}>
+              {photoPreview ? <img src={photoPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--brand-200)' }} />
+                : <div className="photo-preview" style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'var(--grad-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 700 }}>{initials(user?.name)}</div>}
+              <div className="photo-overlay"><Camera size={20} /></div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (f) { setPhotoFile(f); const r = new FileReader(); r.onload = e2 => setPhotoPreview(e2.target.result); r.readAsDataURL(f); } }} />
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontWeight: 700, fontSize: '1rem' }}>{user?.name}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Student No.: {user?.id}</p>
+            </div>
+          </div>
+          <div className="divider" />
+          <div className="grid-2" style={{ gap: 12 }}>
+            {[['contactNo', 'Your Contact No.', 'tel'], ['parentName', "Parent/Guardian", 'text'], ['parentContactNo', "Guardian's Contact", 'tel'], ['address', 'Address', 'text']].map(([k, label, type]) => (
+              <div key={k} className="form-group" style={k === 'address' ? { gridColumn: '1/-1' } : {}}>
+                <label className="form-label">{label}</label>
+                <input className="form-input" type={type} value={form[k]} onChange={e => set(k, e.target.value)} placeholder={label} />
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={handleSaveProfile} disabled={loading} style={{ alignSelf: 'flex-start' }}>
+            {loading ? <><LoadingSpinner /> Saving...</> : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Page ────────────────────────────────────────────────────────────
+function SettingsPage({ user, onRefresh }) {
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [pwLoading, setPwLoading] = useState(false);
+  const [themeLoading, setThemeLoading] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(user?.theme || 'default');
+  const [activeTab, setActiveTab] = useState('personalize');
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
   const handleChangePassword = async () => {
     if (!form.currentPassword) { toast.error('Enter your current password.'); return; }
     if (!form.newPassword || form.newPassword.length < 6) { toast.error('New password must be at least 6 characters.'); return; }
@@ -384,56 +465,97 @@ function ProfilePage({ user, profile, onRefresh }) {
     } finally { setPwLoading(false); }
   };
 
-  const initials = (n) => n ? (n.trim().split(/\s+/).map(p => p[0]).join('').toUpperCase().slice(0, 2)) : '?';
+  const handleThemeChange = async (themeKey) => {
+    setCurrentTheme(themeKey);
+    setThemeLoading(true);
+    try {
+      await api.put('/student/theme', { theme: themeKey });
+      toast.success('Theme updated successfully.');
+      onRefresh?.();
+    } catch (err) {
+      toast.error('Failed to update theme.');
+    } finally { setThemeLoading(false); }
+  };
+
+  const themes = [
+    { id: 'default', label: 'Default (Violet)', color: '#8b5cf6' },
+    { id: 'blue', label: 'Light Blue', color: '#3b82f6' },
+    { id: 'orange', label: 'Light Orange', color: '#f97316' },
+    { id: 'pink', label: 'Light Pink/Red', color: '#f43f5e' },
+    { id: 'green', label: 'Light Green', color: '#10b981' },
+  ];
 
   return (
     <div className="page-content fade-in">
-      <h2 style={{ fontWeight: 800, marginBottom: 24 }}>My Profile</h2>
-      <div className="grid-2" style={{ alignItems: 'start' }}>
-        <div className="card">
-          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Personal Information</h3></div>
-          <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-              <div className="photo-upload" style={{ width: 96, height: 96 }} onClick={() => fileRef.current.click()}>
-                {photoPreview ? <img src={photoPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--brand-200)' }} />
-                  : <div className="photo-preview" style={{ width: '100%', height: '100%', borderRadius: '50%', background: 'var(--grad-main)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.5rem', fontWeight: 700 }}>{initials(user?.name)}</div>}
-                <div className="photo-overlay"><Camera size={20} /></div>
-              </div>
-              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files[0]; if (f) { setPhotoFile(f); const r = new FileReader(); r.onload = e2 => setPhotoPreview(e2.target.result); r.readAsDataURL(f); } }} />
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontWeight: 700, fontSize: '1rem' }}>{user?.name}</p>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Student No.: {user?.id}</p>
-              </div>
-            </div>
-            <div className="divider" />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[['contactNo', 'Your Contact No.', 'tel'], ['parentName', "Parent/Guardian", 'text'], ['parentContactNo', "Guardian's Contact", 'tel'], ['address', 'Address', 'text']].map(([k, label, type]) => (
-                <div key={k} className="form-group" style={k === 'address' ? { gridColumn: '1/-1' } : {}}>
-                  <label className="form-label">{label}</label>
-                  <input className="form-input" type={type} value={form[k]} onChange={e => set(k, e.target.value)} placeholder={label} />
-                </div>
+      <h2 style={{ fontWeight: 800, marginBottom: 24 }}>Account Settings</h2>
+      
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid var(--border)', paddingBottom: 12, overflowX: 'auto', whiteSpace: 'nowrap', padding: '0 4px 12px 4px' }}>
+        <button 
+          onClick={() => setActiveTab('personalize')}
+          style={{ 
+            background: activeTab === 'personalize' ? 'var(--brand-100)' : 'transparent',
+            color: activeTab === 'personalize' ? 'var(--brand-700)' : 'var(--text-muted)',
+            border: 'none', padding: '8px 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}>
+          Personalize
+        </button>
+        <button 
+          onClick={() => setActiveTab('security')}
+          style={{ 
+            background: activeTab === 'security' ? 'var(--brand-100)' : 'transparent',
+            color: activeTab === 'security' ? 'var(--brand-700)' : 'var(--text-muted)',
+            border: 'none', padding: '8px 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}>
+          Security
+        </button>
+      </div>
+
+      {activeTab === 'personalize' && (
+        <div className="card fade-in" style={{ maxWidth: 600 }}>
+          <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Personalize</h3></div>
+          <div className="card-body">
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: 16 }}>Choose a color theme for your dashboard.</p>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {themes.map(t => (
+                <button 
+                  key={t.id} 
+                  onClick={() => handleThemeChange(t.id)}
+                  disabled={themeLoading}
+                  style={{
+                    width: 48, height: 48, borderRadius: '50%', background: t.color,
+                    border: currentTheme === t.id ? '4px solid white' : 'none',
+                    boxShadow: currentTheme === t.id ? `0 0 0 2px ${t.color}` : 'var(--shadow-sm)',
+                    cursor: themeLoading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: themeLoading && currentTheme !== t.id ? 0.5 : 1
+                  }}
+                  title={t.label}
+                />
               ))}
             </div>
-            <button className="btn btn-primary" onClick={handleSaveProfile} disabled={loading}>
-              {loading ? <><LoadingSpinner /> Saving...</> : 'Save Changes'}
-            </button>
           </div>
         </div>
-        <div className="card">
+      )}
+
+      {activeTab === 'security' && (
+        <div className="card fade-in" style={{ maxWidth: 600 }}>
           <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Change Password</h3></div>
           <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="form-group"><label className="form-label">Current Password</label><input className="form-input" type="password" value={form.currentPassword} onChange={e => set('currentPassword', e.target.value)} /></div>
             <div className="form-group"><label className="form-label">New Password</label><input className="form-input" type="password" value={form.newPassword} onChange={e => set('newPassword', e.target.value)} /></div>
             <div className="form-group"><label className="form-label">Confirm New Password</label><input className="form-input" type="password" value={form.confirmPassword} onChange={e => set('confirmPassword', e.target.value)} /></div>
-            <button className="btn btn-primary" onClick={handleChangePassword} disabled={pwLoading}>
+            <button className="btn btn-primary" onClick={handleChangePassword} disabled={pwLoading} style={{ alignSelf: 'flex-start' }}>
               {pwLoading ? <><LoadingSpinner /> Changing...</> : 'Change Password'}
             </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
 
 // ─── Main Student Dashboard ───────────────────────────────────────────────────
 export default function StudentDashboard() {
@@ -463,6 +585,7 @@ export default function StudentDashboard() {
     { icon: Calendar, label: 'Attendance', active: page === 'attendance', onClick: () => navigate('/student/attendance') },
     { type: 'section', label: 'Account' },
     { icon: User, label: 'Profile', active: page === 'profile', onClick: () => navigate('/student/profile') },
+    { icon: Settings, label: 'Settings', active: page === 'settings', onClick: () => navigate('/student/settings') },
   ];
 
   return (
@@ -493,6 +616,12 @@ export default function StudentDashboard() {
           <>
             <PageHeader title="My Profile" subtitle="Manage your account and personal information" />
             <ProfilePage user={user} profile={profile} onRefresh={() => { loadData(); refresh(); }} />
+          </>
+        } />
+        <Route path="/settings" element={
+          <>
+            <PageHeader title="Settings" subtitle="Manage your account preferences and security" />
+            <SettingsPage user={user} onRefresh={() => { loadData(); refresh(); }} />
           </>
         } />
       </Routes>

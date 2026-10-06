@@ -103,7 +103,7 @@ export default function LoginPage() {
               <GraduationCap size={28} color="var(--violet-600)" />
             </div>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 4 }}>Welcome back!</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sign in with your Student No., Teacher ID, or <em>admin</em></p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Sign in with your Student No. or Teacher ID</p>
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} autoComplete="off">
@@ -114,7 +114,7 @@ export default function LoginPage() {
                 <input
                   className="form-input has-icon"
                   type="text"
-                  placeholder="e.g. 2024000001 or admin"
+                  placeholder="e.g. 2024000001"
                   value={userId}
                   onChange={e => { setUserId(e.target.value); setError(''); }}
                   autoFocus

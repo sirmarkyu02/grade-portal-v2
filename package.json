@@ -9,6 +9,7 @@
   },
   "type": "commonjs",
   "dependencies": {
+    "archiver": "^8.0.0",
     "chokidar": "^5.0.0",
     "cors": "^2.8.6",
     "exceljs": "^4.4.0",
