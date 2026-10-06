@@ -1,5 +1,21 @@
 [
   {
+    "id": "f3341fdf-e5f0-406a-9f49-6cb4b858adf4",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-06T09:21:19.033Z"
+  },
+  {
+    "id": "427a1d5a-6517-4e94-8fa5-2cc987ccacf8",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-06T09:16:36.197Z"
+  },
+  {
     "id": "304a85b1-38fb-4976-964a-dd486b31ac8c",
     "userId": "2000448290",
     "role": "student",

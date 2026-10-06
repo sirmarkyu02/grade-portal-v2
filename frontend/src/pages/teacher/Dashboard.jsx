@@ -97,18 +97,18 @@ function ClassListPage({ onSelectClass }) {
                 <div key={i} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }} onClick={() => onSelectClass(cls)}
                   onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-lg)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 16, minWidth: 0, flex: 1 }}>
                       <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--brand-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--brand-600)' }}>
                         <BookOpen size={24} />
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <p style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: 2 }}>{cls.subject || cls.fileName?.replace('.xlsx', '')}</p>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 2 }}>{cls.section} • {cls.gradeLevel}</p>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Last updated: {cls.lastModified ? new Date(cls.lastModified).toLocaleDateString() : '—'}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+                        <p style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: 2, wordWrap: 'break-word', lineHeight: 1.3 }}>{cls.subject || cls.fileName?.replace('.xlsx', '')}</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cls.section} • {cls.gradeLevel}</p>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Last updated: {cls.lastModified ? new Date(cls.lastModified).toLocaleDateString() : '—'}</p>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
                       <span className="badge" style={{ background: 'var(--brand-100)', color: 'var(--brand-700)', padding: '6px 12px' }}>{cls.studentCount} students</span>
                       <span style={{ color: 'var(--brand-400)', marginLeft: 4 }}>›</span>
                     </div>

@@ -61,6 +61,16 @@ function SubjectGrades({ subject }) {
   const term = subject.terms[activeTab];
   if (!term) return null;
 
+  const formatShortDate = (dateStr) => {
+    if (!dateStr || dateStr === '—') return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${mm}/${dd}/${yy}`;
+  };
+
   const renderScoreTable = (items, label) => {
     if (!items || items.length === 0) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No {label} recorded.</p>;
     
@@ -100,7 +110,10 @@ function SubjectGrades({ subject }) {
                 return (
                   <tr key={i}>
                     <td style={{ fontWeight: 500 }}>{item.label}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{item.date || '—'}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                      <span className="date-desktop">{item.date || '—'}</span>
+                      <span className="date-mobile">{formatShortDate(item.date)}</span>
+                    </td>
                     <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{item.score ?? '—'}</span></td>
                     <td style={{ color: 'var(--text-muted)' }}>{item.hps}</td>
                     {hasWeights && <td style={{ color: 'var(--text-muted)' }}>{typeof item.weight === 'number' ? `${Math.round(item.weight * 100)}%` : '—'}</td>}
@@ -141,23 +154,48 @@ function SubjectGrades({ subject }) {
               { label: 'Exams', value: term.summary?.examWS !== null ? `${term.summary.examWS?.toFixed(2) ?? '—'}` : '—', icon: '📋' },
               { label: 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
             ].map((s, i) => (
-              <div key={i} className="stat-card" style={{ padding: 'var(--space-4)' }}>
+              <div key={i} className="stat-card stat-card-sm">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: '1.25rem' }}>{s.icon}</span>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>{s.label}</p>
+                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
                 </div>
-                {s.isGrade ? <GradePill grade={s.value} /> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
+                {s.isGrade ? <GradePill grade={s.value} size="lg" /> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
               </div>
             ))}
           </div>
 
           {/* Status banner if present */}
           {term.summary?.status && (
-            <div style={{ padding: '10px 16px', borderRadius: 10, background: String(term.summary.status).toLowerCase().includes('pass') ? '#d1fae5' : '#fee2e2', border: `1px solid ${String(term.summary.status).toLowerCase().includes('pass') ? '#6ee7b7' : '#fca5a5'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontWeight: 700, color: String(term.summary.status).toLowerCase().includes('pass') ? '#065f46' : '#991b1b' }}>
-                {String(term.summary.status).toLowerCase().includes('pass') ? '✓ Passed' : '✗ Not Passed'} — {term.summary.status}
-              </span>
-            </div>
+            (() => {
+              const statStr = String(term.summary.status).toLowerCase();
+              const hasGrade = term.summary.transmutedGrade !== null && term.summary.transmutedGrade !== undefined && term.summary.transmutedGrade !== '';
+              
+              if (!hasGrade || statStr.includes('hidden') || statStr.includes('progress') || statStr.includes('tba')) {
+                return (
+                  <div style={{ padding: '12px 18px', borderRadius: 12, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <div style={{ background: 'var(--brand-100)', padding: 6, borderRadius: '50%', display: 'flex' }}>
+                      <Activity size={18} color="var(--brand-600)" />
+                    </div>
+                    <span style={{ fontWeight: 600, color: 'var(--brand-700)', fontSize: '0.875rem' }}>
+                      Grades for this term are currently in progress or hidden by the instructor.
+                    </span>
+                  </div>
+                );
+              }
+
+              const isPassed = statStr.includes('pass');
+              
+              return (
+                <div style={{ padding: '12px 18px', borderRadius: 12, background: isPassed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${isPassed ? '#a7f3d0' : '#fecaca'}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <div style={{ background: isPassed ? '#d1fae5' : '#fee2e2', padding: 6, borderRadius: '50%', display: 'flex' }}>
+                    <Award size={18} color={isPassed ? '#059669' : '#dc2626'} />
+                  </div>
+                  <span style={{ fontWeight: 600, color: isPassed ? '#065f46' : '#991b1b', fontSize: '0.875rem' }}>
+                    {isPassed ? 'Congratulations! You passed this term.' : 'You did not pass this term.'}
+                  </span>
+                </div>
+              );
+            })()
           )}
 
           {/* Detail sections */}

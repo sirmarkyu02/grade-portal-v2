@@ -230,6 +230,7 @@ h3 { font-size: 1.25rem; }
   box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
   transition: transform var(--duration-base), box-shadow var(--duration-base);
 }
+.stat-card-sm { padding: var(--space-4); }
 .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .stat-card::before { content: ''; position: absolute; top: 0; right: 0; width: 80px; height: 80px; border-radius: 0 0 0 var(--radius-xl); opacity: 0.1; }
 .stat-card.brand::before { background: var(--grad-main); }
@@ -382,6 +383,19 @@ h3 { font-size: 1.25rem; }
   display: inline-flex; align-items: center; justify-content: center;
   font-family: var(--font-mono); font-weight: 700; font-size: 0.875rem;
   padding: 2px 10px; border-radius: var(--radius-full); min-width: 52px;
+}
+.grade-pill-lg {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  padding: 0;
+  min-width: 0;
+  box-shadow: none;
+  background: var(--grad-main) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  line-height: 1;
 }
 .grade-a { background: #d1fae5; color: #065f46; }
 .grade-b { background: #dbeafe; color: #1e40af; }
@@ -568,6 +582,8 @@ h3 { font-size: 1.25rem; }
   .login-left { display: none; }
   .login-right { width: 100%; }
 }
+.date-mobile { display: none; }
+
 @media (max-width: 768px) {
   .grid-3 { grid-template-columns: repeat(2, 1fr); }
   .grid-2 { grid-template-columns: 1fr; }
@@ -577,22 +593,28 @@ h3 { font-size: 1.25rem; }
   .welcome-banner { padding: 24px 28px; }
   .welcome-name { font-size: 1.5rem; }
   .welcome-count { font-size: 2.75rem; }
+  .date-desktop { display: none; }
+  .date-mobile { display: inline; }
 }
 @media (max-width: 480px) {
   .grid-3 { grid-template-columns: 1fr; }
   .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .stat-card { padding: 16px; gap: 8px; }
+  .stat-card-sm { padding: 12px; gap: 4px; }
   .stat-icon { width: 32px; height: 32px; }
   .stat-icon svg { width: 16px; height: 16px; }
   .stat-value { font-size: 1.5rem; }
   .stat-label { font-size: 0.75rem; line-height: 1.2; }
   
-  .welcome-banner { padding: 20px; flex-direction: column; align-items: flex-start; gap: 16px; border-radius: 20px; }
-  .welcome-name { font-size: 1.35rem; }
-  .welcome-count { font-size: 2.25rem; }
-  .welcome-stats { width: 100%; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 12px; }
-  .welcome-id { padding: 4px 10px; }
-  .welcome-id span { font-size: 0.75rem; }
+  .welcome-banner { padding: 16px; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; border-radius: 16px; }
+  .welcome-content { flex: 1; min-width: 0; }
+  .welcome-greeting { font-size: 0.7rem; margin-bottom: 2px; }
+  .welcome-name { font-size: 1.15rem; margin-bottom: 6px; word-wrap: break-word; }
+  .welcome-count { font-size: 1.75rem; }
+  .welcome-stats { width: auto; border-top: none; border-left: 1px solid rgba(255,255,255,0.2); padding-top: 0; padding-left: 16px; text-align: center; }
+  .welcome-label { font-size: 0.7rem; line-height: 1.2; margin-top: 2px; }
+  .welcome-id { padding: 4px 8px; }
+  .welcome-id span { font-size: 0.7rem; }
 }
 
 /* ─── Print ───────────────────────────────────────────────────────────────── */

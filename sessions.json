@@ -88,15 +88,13 @@
       "name": "JOHN MARQ E. RAMOS"
     },
     "createdAt": 1791274115872,
-    "lastActive": 1791274115872
+    "lastActive": 1791278379428
   },
-  "089c0cd9-59df-434c-a78d-162777a0c690": {
-    "userId": "2000448290",
-    "role": "student",
-    "meta": {
-      "name": "SAN JUAN, CHLOE MARIAE"
-    },
-    "createdAt": 1791276211252,
-    "lastActive": 1791276211252
+  "d5d13511-9f34-4d59-8a27-9739b1b5a12d": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791278479036,
+    "lastActive": 1791278479036
   }
 }

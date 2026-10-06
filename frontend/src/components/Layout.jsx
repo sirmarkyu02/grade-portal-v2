@@ -115,11 +115,12 @@ export function PageHeader({ title, subtitle, actions }) {
   );
 }
 
-export function GradePill({ grade }) {
-  if (!grade && grade !== 0) return <span className="grade-pill grade-empty">—</span>;
+export function GradePill({ grade, size = 'sm' }) {
+  const sizeClass = size === 'lg' ? 'grade-pill-lg' : '';
+  if (!grade && grade !== 0) return <span className={`grade-pill grade-empty ${sizeClass}`}>—</span>;
   const g = Number(grade);
   const cls = g >= 90 ? 'grade-a' : g >= 80 ? 'grade-b' : g >= 75 ? 'grade-c' : g >= 65 ? 'grade-d' : 'grade-f';
-  return <span className={`grade-pill ${cls}`}>{grade}</span>;
+  return <span className={`grade-pill ${cls} ${sizeClass}`}>{grade}</span>;
 }
 
 export function StatusBadge({ status }) {
