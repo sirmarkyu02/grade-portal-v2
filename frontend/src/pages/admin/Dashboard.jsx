@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
 import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, ChevronDown, ChevronUp } from 'lucide-react';
@@ -326,19 +326,33 @@ function TemplatesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {templates.map((t, i) => (
                 <div key={i} className="card" style={{ padding: 18 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                    <div>
-                      <p style={{ fontWeight: 700 }}>{t.name}</p>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                        {(t.size / 1024).toFixed(1)} KB • {t.lastModified ? new Date(t.lastModified).toLocaleString() : '—'}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <div style={{ color: 'var(--violet-500)', display: 'flex', alignItems: 'center' }}>
+                          <FileSpreadsheet size={18} />
+                        </div>
+                        <p style={{ 
+                          fontWeight: 600, 
+                          color: 'var(--text-primary)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          fontSize: '0.95rem'
+                        }} title={t.name}>
+                          {t.name}
+                        </p>
+                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', paddingLeft: 28 }}>
+                        {(t.size / 1024).toFixed(1)} KB &bull; {t.lastModified ? new Date(t.lastModified).toLocaleString() : '—'}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      <a className="btn btn-secondary btn-sm" href={`/api/admin/templates/download/${encodeURIComponent(t.name)}`} download><Download size={13} /></a>
+                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                      <a className="btn btn-secondary btn-sm" href={`/api/admin/templates/download/${encodeURIComponent(t.name)}`} download title="Download Template"><Download size={14} /></a>
                       <button className="btn btn-secondary btn-sm" onClick={() => handleRevert(t.name)} disabled={reverting === t.name} title="Revert to previous version">
-                        {reverting === t.name ? <LoadingSpinner /> : <RotateCcw size={13} />}
+                        {reverting === t.name ? <LoadingSpinner /> : <RotateCcw size={14} />}
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(t.name)}><Trash2 size={13} /></button>
+                      <button className="btn btn-danger btn-sm" onClick={() => setConfirmDelete(t.name)} title="Delete Template"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 </div>

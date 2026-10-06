@@ -211,6 +211,9 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
       for (const [termName, termData] of Object.entries(headers.columns)) {
         for (const w of termData.ww) updates.push({ termName, col: w.col, hps: w.hps, label: w.label, dateStr: w.date });
         for (const p of termData.pt) updates.push({ termName, col: p.col, hps: p.hps, label: p.label, dateStr: p.date });
+        if (termData.exam) {
+          for (const e of termData.exam) updates.push({ termName, col: e.col, hps: e.hps, label: e.label, dateStr: e.date });
+        }
       }
       for (const a of headers.attendance) attendanceUpdates.push({ col: a.col, dateStr: a.dateStr, term: a.term });
       await api.put(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/headers`, { updates, attendanceUpdates });
@@ -228,16 +231,18 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
 
   const renderTable = (items, type) => {
     if (!items) return null;
-    const activeItems = items.filter(item => type === 'attendance' ? item.dateStr : (item.hps !== null && item.hps !== undefined && item.hps !== ''));
+    const activeItems = type === 'exam' ? items : items.filter(item => type === 'attendance' ? item.dateStr : (item.hps !== null && item.hps !== undefined && item.hps !== ''));
     const isLocked = isTermLocked(activeTermTab);
     
     return (
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h4 style={{ fontWeight: 600 }}>{type === 'ww' ? 'Written Works' : type === 'pt' ? 'Performance Tasks' : 'Attendance Dates'}</h4>
-          <button className="btn btn-primary btn-sm" onClick={() => handleAddItem(type)} disabled={isLocked}>
-            + Add {type === 'attendance' ? "Today's Date" : 'Item'}
-          </button>
+          <h4 style={{ fontWeight: 600 }}>{type === 'ww' ? 'Written Works' : type === 'pt' ? 'Performance Tasks' : type === 'exam' ? 'Term Exams' : 'Attendance Dates'}</h4>
+          {type !== 'exam' && (
+            <button className="btn btn-primary btn-sm" onClick={() => handleAddItem(type)} disabled={isLocked}>
+              + Add {type === 'attendance' ? "Today's Date" : 'Item'}
+            </button>
+          )}
         </div>
         {activeItems.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
@@ -252,7 +257,7 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
                   {type !== 'attendance' && <th>HPS</th>}
                   <th>Label / Term</th>
                   <th>Date</th>
-                  <th>Action</th>
+                  {type !== 'exam' && <th>Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -265,23 +270,35 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
                   </td>
                 )}
                 <td>
-                  <input type="text" value={type === 'attendance' ? (item.term || '') : (item.label || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'term' : 'label', e.target.value)} style={{ width: 100, padding: 4 }} disabled={isLocked} />
+                  {type === 'exam' ? (
+                    <span style={{
+                      fontWeight: 500,
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {item.label}
+                    </span>
+                  ) : (
+                    <input type="text" value={type === 'attendance' ? (item.term || '') : (item.label || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'term' : 'label', e.target.value)} style={{ width: 100, padding: 4 }} disabled={isLocked} />
+                  )}
                 </td>
                 <td>
                   <input type="text" placeholder="e.g. 10/06/2026" value={type === 'attendance' ? (item.dateStr || '') : (item.date || '')} onChange={e => handleUpdate(type, item.col, type === 'attendance' ? 'dateStr' : 'date', e.target.value)} style={{ width: 120, padding: 4 }} disabled={isLocked} />
                 </td>
-                <td>
-                  <button className="btn btn-ghost btn-sm" disabled={isLocked} onClick={() => {
-                    if (type === 'attendance') {
-                      handleUpdate(type, item.col, 'dateStr', '');
-                      handleUpdate(type, item.col, 'term', '');
-                    } else {
-                      handleUpdate(type, item.col, 'hps', null);
-                      handleUpdate(type, item.col, 'label', '');
-                      handleUpdate(type, item.col, 'date', '');
-                    }
-                  }} style={{ color: 'var(--danger)' }} title="Remove item"><X size={14}/></button>
-                </td>
+                {type !== 'exam' && (
+                  <td>
+                    <button className="btn btn-ghost btn-sm" disabled={isLocked} onClick={() => {
+                      if (type === 'attendance') {
+                        handleUpdate(type, item.col, 'dateStr', '');
+                        handleUpdate(type, item.col, 'term', '');
+                      } else {
+                        handleUpdate(type, item.col, 'hps', null);
+                        handleUpdate(type, item.col, 'label', '');
+                        handleUpdate(type, item.col, 'date', '');
+                      }
+                    }} style={{ color: 'var(--danger)' }} title="Remove item"><X size={14}/></button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -297,6 +314,7 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
       <div className="tabs" style={{ marginBottom: 16 }}>
         <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
         <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
+        <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} onClick={() => setActiveComponentTab('exam')}>Exams</button>
         <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
       </div>
       {activeComponentTab !== 'attendance' && (
@@ -308,6 +326,7 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
       )}
       {activeComponentTab === 'ww' && renderTable(headers.columns?.[activeTermTab]?.ww, 'ww')}
       {activeComponentTab === 'pt' && renderTable(headers.columns?.[activeTermTab]?.pt, 'pt')}
+      {activeComponentTab === 'exam' && renderTable(headers.columns?.[activeTermTab]?.exam, 'exam')}
       {activeComponentTab === 'attendance' && renderTable(headers.attendance, 'attendance')}
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
         <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>

@@ -812,14 +812,22 @@ app.get('/api/teacher/class/:filename/headers', requireAuth(['teacher']), (req, 
         return ws[addr] ? ws[addr].v : null;
       };
       
-      const ww = [], pt = [];
+      const ww = [], pt = [], exam = [];
       for (let c = 4; c <= 23; c++) {
         ww.push({ col: c, hps: cell(5, c) || null, date: excelDateToString(cell(6, c)), label: String(cell(7, c) || `WW${c - 3}`) });
       }
       for (let c = 27; c <= 41; c++) {
         pt.push({ col: c, hps: cell(5, c) || null, date: excelDateToString(cell(6, c)), label: String(cell(7, c) || `PT${c - 26}`) });
       }
-      columns[term] = { ww, pt };
+      const examColsList = [
+        { key: 'ST1', col: 45, label: 'Summative Test 1' },
+        { key: 'ST2', col: 46, label: 'Summative Test 2' },
+        { key: 'TE', col: 47, label: 'Term Exam' },
+      ];
+      for (const e of examColsList) {
+         exam.push({ col: e.col, key: e.key, hps: cell(5, e.col) || null, date: excelDateToString(cell(6, e.col)), label: e.label });
+      }
+      columns[term] = { ww, pt, exam };
     });
 
     const attWs = wb.Sheets['Attendance'];
@@ -862,16 +870,20 @@ app.put('/api/teacher/class/:filename/headers', requireAuth(['teacher']), async 
         if (sheet) {
           if (update.hps === null || update.hps === '') {
             sheet.cell(6, update.col + 1).value(null);
-            sheet.cell(7, update.col + 1).value(null);
-            sheet.cell(8, update.col + 1).value(null);
-            for (let r = 8; r <= 71; r++) {
-              sheet.cell(r, update.col + 1).value(null);
+            if (update.col !== 45 && update.col !== 46 && update.col !== 47) {
+              sheet.cell(7, update.col + 1).value(null);
+              sheet.cell(8, update.col + 1).value(null);
+              for (let r = 8; r <= 71; r++) {
+                sheet.cell(r, update.col + 1).value(null);
+              }
             }
           } else {
             sheet.cell(6, update.col + 1).value(Number(update.hps));
             if (update.dateStr) {
                const d = new Date(update.dateStr);
                if (!isNaN(d.getTime())) sheet.cell(7, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+            } else if (update.dateStr === '') {
+               sheet.cell(7, update.col + 1).value(null);
             }
             if (update.label) sheet.cell(8, update.col + 1).value(update.label);
           }
