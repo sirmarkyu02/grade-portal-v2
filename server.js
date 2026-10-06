@@ -135,7 +135,7 @@ function cellVal(ws, addr) {
   return ws[addr] ? ws[addr].v : null;
 }
 
-function parseTermSheet(ws) {
+function parseTermSheet(ws, studentsList) {
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
   const cell = (r, c) => {
     const addr = XLSX.utils.encode_cell({ r, c });
@@ -189,10 +189,10 @@ function parseTermSheet(ws) {
   };
 
   const students = [];
-  for (let r = 8; r <= Math.min(range.e.r, 74); r++) {
-    const studentNo = cell(r, 2);
-    const studentName = cell(r, 3);
-    if (!studentNo || !studentName) continue;
+  for (const stu of studentsList) {
+    const r = stu.termRow;
+    const studentNo = stu.studentNo;
+    const studentName = stu.studentName;
 
     const writtenWorks = wwItems.map(item => ({ label: item.label, date: item.date, hps: item.hps, score: cell(r, item.col), col: item.col, row: r }));
     const performanceTasks = ptItems.map(item => ({ label: item.label, date: item.date, hps: item.hps, score: cell(r, item.col), col: item.col, row: r }));
@@ -213,8 +213,26 @@ function parseTermSheet(ws) {
     const ptWS = ptPS * ptWeight;
 
     let examTotal = 0, examMax = 0;
-    Object.values(exams).forEach(e => { examMax += e.hps; if (e.score !== null && e.score !== undefined) { examTotal += e.score; hasScore = true; } });
-    const examPS = examMax > 0 ? (examTotal / examMax) * 100 : 0;
+    let hasSubWeights = false;
+    let weightedExamPS = 0;
+    Object.values(exams).forEach(e => {
+      const subWeight = cell(6, e.col + 3);
+      if (typeof subWeight === 'number') {
+        hasSubWeights = true;
+        if (e.score !== null && e.score !== undefined) {
+          const ps = e.hps > 0 ? (e.score / e.hps) * 100 : 0;
+          weightedExamPS += ps * subWeight;
+          hasScore = true;
+        }
+      } else {
+        examMax += e.hps; 
+        if (e.score !== null && e.score !== undefined) { 
+          examTotal += e.score; 
+          hasScore = true; 
+        }
+      }
+    });
+    const examPS = hasSubWeights ? weightedExamPS : (examMax > 0 ? (examTotal / examMax) * 100 : 0);
     const examWS = examPS * examWeight;
 
     const initialGrade = hasScore ? Math.round((wwWS + ptWS + examWS) * 100) / 100 : null;
@@ -245,7 +263,7 @@ function parseTermSheet(ws) {
   return students;
 }
 
-function parseAttendance(ws) {
+function parseAttendance(ws, studentsList) {
   const cell = (r, c) => { const a = XLSX.utils.encode_cell({ r, c }); return ws[a] ? ws[a].v : null; };
   const sessions = [];
   for (let c = 4; c <= 103; c++) {
@@ -254,9 +272,10 @@ function parseAttendance(ws) {
     if (dateVal) sessions.push({ col: c, date: excelDateToString(dateVal), term: termLabel || '' });
   }
   const students = {};
-  for (let r = 5; r <= 74; r++) {
-    const studentNo = cell(r, 2); const studentName = cell(r, 3);
-    if (!studentNo || !studentName) continue;
+  for (const stu of studentsList) {
+    const r = stu.attendanceRow;
+    const studentNo = stu.studentNo;
+    const studentName = stu.studentName;
     const records = [];
     for (const s of sessions) { const val = cell(r, s.col); if (val && val !== '--') records.push({ date: s.date, term: s.term, status: val }); }
     students[String(studentNo)] = {
@@ -272,12 +291,13 @@ function parseAttendance(ws) {
   return students;
 }
 
-function parseGradingSummary(ws) {
+function parseGradingSummary(ws, studentsList) {
   const cell = (r, c) => { const a = XLSX.utils.encode_cell({ r, c }); return ws[a] ? ws[a].v : null; };
   const students = {};
-  for (let r = 8; r <= 74; r++) {
-    const studentNo = cell(r, 2); const studentName = cell(r, 3);
-    if (!studentNo || !studentName) continue;
+  for (const stu of studentsList) {
+    const r = stu.summaryRow;
+    const studentNo = stu.studentNo;
+    const studentName = stu.studentName;
     students[String(studentNo)] = { studentName, term1: cell(r, 4), term2: cell(r, 5), term3: cell(r, 6), finalGrade: cell(r, 7), remarks: cell(r, 8) };
   }
   return students;
@@ -316,23 +336,37 @@ function loadAllData() {
         fileName: fname,
       };
 
-      const terms = {};
-      wb.SheetNames.filter(n => n.startsWith('Term ')).forEach(termName => {
-        if (wb.Sheets[termName]) terms[termName] = parseTermSheet(wb.Sheets[termName]);
-      });
-
-      let attendance = {};
-      if (wb.Sheets['Attendance']) attendance = parseAttendance(wb.Sheets['Attendance']);
-
-      let gradingSummary = {};
-      if (wb.Sheets['Grading Summary']) gradingSummary = parseGradingSummary(wb.Sheets['Grading Summary']);
-
+      const classStudentsList = [];
       for (let row = 7; row <= 70; row++) {
         const sNo = cellVal(di, `M${row}`);
         const sName = cellVal(di, `N${row}`);
-        if (!sNo || !sName) continue;
+        if (sNo && sName) {
+          classStudentsList.push({
+            studentNo: String(sNo),
+            studentName: String(sName),
+            diRow: row,
+            termRow: row + 1,
+            attendanceRow: row - 2,
+            summaryRow: row + 1
+          });
+        }
+      }
 
-        const studentNo = String(sNo);
+      const terms = {};
+      wb.SheetNames.filter(n => n.startsWith('Term ')).forEach(termName => {
+        if (wb.Sheets[termName]) terms[termName] = parseTermSheet(wb.Sheets[termName], classStudentsList);
+      });
+
+      let attendance = {};
+      if (wb.Sheets['Attendance']) attendance = parseAttendance(wb.Sheets['Attendance'], classStudentsList);
+
+      let gradingSummary = {};
+      if (wb.Sheets['Grading Summary']) gradingSummary = parseGradingSummary(wb.Sheets['Grading Summary'], classStudentsList);
+
+      for (const stu of classStudentsList) {
+        const row = stu.diRow;
+        const studentNo = stu.studentNo;
+        const sName = stu.studentName;
         if (!newMap[studentNo]) newMap[studentNo] = { studentNo, name: sName, subjects: [] };
 
         const studentTerms = {};
@@ -784,6 +818,11 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
           }
         }
       }
+    }
+    const calcPr = workbook._node.children.find(c => c.name === 'calcPr');
+    if (calcPr) {
+      calcPr.attributes.fullCalcOnLoad = 1;
+      calcPr.attributes.forceFullCalc = 1;
     }
     await workbook.toFileAsync(fpath);
     res.json({ success: true, message: 'Scores updated.' });

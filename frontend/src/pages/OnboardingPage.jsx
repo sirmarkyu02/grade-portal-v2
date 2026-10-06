@@ -6,7 +6,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 
 export default function OnboardingPage() {
-  const { user, refresh } = useAuth();
+  const { user, refresh, logout } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -89,7 +89,16 @@ export default function OnboardingPage() {
     <div style={{ minHeight: '100vh', background: 'var(--grad-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div className="card" style={{ maxWidth: 560, width: '100%', borderRadius: 24, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ background: 'var(--grad-hero)', padding: '32px 32px 24px', color: 'white' }}>
+        <div style={{ background: 'var(--grad-hero)', padding: '32px 32px 24px', color: 'white', position: 'relative' }}>
+          <button 
+            onClick={logout} 
+            style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(10px)', transition: 'all 0.2s' }} 
+            onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.25)'; e.currentTarget.style.transform = 'translateY(-1px)'; }} 
+            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'none'; }}
+          >
+            Log Out
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <GraduationCap size={22} color="white" />

@@ -147,7 +147,14 @@ function GradeEditModal({ classInfo, onClose }) {
 
   const loadClassData = useCallback(() => {
     return api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/full`)
-      .then(r => { setStudents(r.data.students || []); })
+      .then(r => {
+        const newStudents = r.data.students || [];
+        setStudents(newStudents);
+        setSelectedStudent(prev => {
+          if (!prev) return prev;
+          return newStudents.find(s => s.studentNo === prev.studentNo) || prev;
+        });
+      })
       .catch(() => toast.error('Failed to load class data.'));
   }, [classInfo.fileName]);
 
