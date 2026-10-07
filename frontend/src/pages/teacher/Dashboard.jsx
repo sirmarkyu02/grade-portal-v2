@@ -209,13 +209,18 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
       const updates = [];
       const attendanceUpdates = [];
       for (const [termName, termData] of Object.entries(headers.columns)) {
+        if (isTermLocked(termName)) continue;
         for (const w of termData.ww) updates.push({ termName, col: w.col, hps: w.hps, label: w.label, dateStr: w.date });
         for (const p of termData.pt) updates.push({ termName, col: p.col, hps: p.hps, label: p.label, dateStr: p.date });
         if (termData.exam) {
           for (const e of termData.exam) updates.push({ termName, col: e.col, hps: e.hps, label: e.label, dateStr: e.date });
         }
       }
-      for (const a of headers.attendance) attendanceUpdates.push({ col: a.col, dateStr: a.dateStr, term: a.term });
+      for (const a of headers.attendance) {
+        const fullTermName = a.term ? a.term.replace('T', 'Term ') : null;
+        if (fullTermName && isTermLocked(fullTermName)) continue;
+        attendanceUpdates.push({ col: a.col, dateStr: a.dateStr, term: a.term });
+      }
       await api.put(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/headers`, { updates, attendanceUpdates });
       toast.success('Activities/Attendance saved successfully!');
       onSaved();
