@@ -1,5 +1,37 @@
 [
   {
+    "id": "741b03ba-ebdd-49ce-a156-20ce172f4109",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-07T11:15:50.246Z"
+  },
+  {
+    "id": "f84c6452-3bdd-4d4f-8ff6-21bcda795857",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 2000490030",
+    "timestamp": "2026-10-07T11:13:24.227Z"
+  },
+  {
+    "id": "d9ba4b83-f563-4031-b8d5-fab506d9083a",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-07T11:12:10.015Z"
+  },
+  {
+    "id": "431730cf-7719-4ab0-88cd-684e2df72a39",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-07T11:11:54.409Z"
+  },
+  {
     "id": "46cb1544-6511-43cd-b581-7ba47421e28a",
     "userId": "admin",
     "role": "admin",

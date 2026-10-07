@@ -306,15 +306,33 @@ function parseAttendance(ws, studentsList) {
       const val = cell(r, s.col);
       records.push({ date: s.date, term: s.term, status: (val && val !== '--') ? val : null, col: s.col, row: r });
     }
-    students[String(studentNo)] = {
-      studentName, records,
-      summary: {
-        term1: { present: cell(r, 104), absent: cell(r, 105), late: cell(r, 106), excused: cell(r, 107) },
-        term2: { present: cell(r, 108), absent: cell(r, 109), late: cell(r, 110), excused: cell(r, 111) },
-        term3: { present: cell(r, 112), absent: cell(r, 113), late: cell(r, 114), excused: cell(r, 115) },
-      },
-      status: cell(r, 116) || 'Active',
-    };
+      const summary = {
+        term1: { present: 0, absent: 0, late: 0, excused: 0 },
+        term2: { present: 0, absent: 0, late: 0, excused: 0 },
+        term3: { present: 0, absent: 0, late: 0, excused: 0 },
+      };
+      
+      for (const rec of records) {
+        if (!rec.status) continue;
+        const stat = rec.status.toUpperCase();
+        let termKey = null;
+        if (rec.term.includes('1')) termKey = 'term1';
+        else if (rec.term.includes('2')) termKey = 'term2';
+        else if (rec.term.includes('3')) termKey = 'term3';
+        
+        if (termKey) {
+          if (stat === 'P') summary[termKey].present++;
+          else if (stat === 'A') summary[termKey].absent++;
+          else if (stat === 'L') summary[termKey].late++;
+          else if (stat === 'E') summary[termKey].excused++;
+        }
+      }
+
+      students[String(studentNo)] = {
+        studentName, records,
+        summary,
+        status: cell(r, 116) || 'Active',
+      };
   }
   return students;
 }
