@@ -1,5 +1,37 @@
 [
   {
+    "id": "46cb1544-6511-43cd-b581-7ba47421e28a",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-07T08:27:19.532Z"
+  },
+  {
+    "id": "02547cf0-de4b-4a8c-802a-b000e6df8c84",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-07T08:25:52.664Z"
+  },
+  {
+    "id": "0575ca93-1ebc-485a-a961-9be6536b9a2d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-07T08:21:08.176Z"
+  },
+  {
+    "id": "bcb26ef8-56ca-4e97-871a-1b9b4efcc4db",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-07T06:32:38.937Z"
+  },
+  {
     "id": "bcdbda8b-b49a-41ec-baaf-f982fb38f369",
     "userId": "sirmarkyu",
     "role": "teacher",

@@ -131,15 +131,6 @@
     "createdAt": 1791336215182,
     "lastActive": 1791336215303
   },
-  "bcb27fa2-59b6-4670-bfbc-c78377bff718": {
-    "userId": "sirmarkyu",
-    "role": "teacher",
-    "meta": {
-      "name": "JOHN MARQ E. RAMOS"
-    },
-    "createdAt": 1791336343568,
-    "lastActive": 1791336343568
-  },
   "bf3bc397-3867-4ef8-928d-d077245a8321": {
     "userId": "sirmarkyu",
     "role": "teacher",
@@ -147,6 +138,31 @@
       "name": "JOHN MARQ E. RAMOS"
     },
     "createdAt": 1791349372658,
-    "lastActive": 1791349372658
+    "lastActive": 1791349665981
+  },
+  "113f1a5a-a9cf-4271-b097-c26d61e7eee6": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791354758952,
+    "lastActive": 1791361639532
+  },
+  "f0e62308-0666-4d8a-8326-65fe1ab75f09": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "name": "JOHN MARQ E. RAMOS"
+    },
+    "createdAt": 1791361268187,
+    "lastActive": 1791361268187
+  },
+  "9000b811-f3a9-447b-a410-c41737201114": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "name": "JOHN MARQ E. RAMOS"
+    },
+    "createdAt": 1791361639538,
+    "lastActive": 1791361639538
   }
 }
