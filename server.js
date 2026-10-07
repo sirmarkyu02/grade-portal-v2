@@ -1088,6 +1088,46 @@ app.get('/api/teacher/download/:filename', requireAuth(['teacher']), (req, res) 
   else res.status(404).send('Not found');
 });
 
+app.get('/api/teacher/students', requireAuth(['teacher']), (req, res) => {
+  const teacherId = req.session.userId;
+  const teacherFiles = teachersConfig[teacherId]?.files || [];
+  
+  const teacherStudentsMap = {};
+  for (const [studentNo, data] of Object.entries(studentsMap)) {
+    const managedSubjects = data.subjects.filter(s => teacherFiles.includes(s.info.fileName));
+    if (managedSubjects.length > 0) {
+      if (!teacherStudentsMap[studentNo]) {
+        teacherStudentsMap[studentNo] = {
+          studentNo: data.studentNo,
+          name: data.name,
+          subjectCount: managedSubjects.length,
+          status: accountStatusConfig[data.studentNo] || 'active',
+          subjects: managedSubjects.map(sub => ({ subject: sub.info.subject, section: sub.info.section, fileName: sub.info.fileName }))
+        };
+      }
+    }
+  }
+  
+  const students = Object.values(teacherStudentsMap).sort((a, b) => a.name.localeCompare(b.name));
+  res.json({ success: true, students });
+});
+
+app.get('/api/teacher/students/:studentNo', requireAuth(['teacher']), (req, res) => {
+  const teacherId = req.session.userId;
+  const teacherFiles = teachersConfig[teacherId]?.files || [];
+  const { studentNo } = req.params;
+  
+  const student = studentsMap[studentNo];
+  if (!student) return res.status(404).json({ error: 'Student not found.' });
+  
+  const managedSubjects = student.subjects.filter(s => teacherFiles.includes(s.info.fileName));
+  if (managedSubjects.length === 0) return res.status(403).json({ error: 'Forbidden.' });
+  
+  const clonedStudent = { ...student, subjects: managedSubjects };
+  const profile = studentProfilesConfig[studentNo] || {};
+  res.json({ success: true, student: clonedStudent, profile });
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  ADMIN ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1361,6 +1401,12 @@ app.put('/api/admin/users/:id/status', requireAuth(['admin']), (req, res) => {
     });
   }
   res.json({ success: true });
+});
+
+// ─── Frontend Integration ───────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+app.get(/^(?!\/api).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/dist/index.html'));
 });
 
 // ─── Start ───────────────────────────────────────────────────────────────────

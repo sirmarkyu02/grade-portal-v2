@@ -14,17 +14,19 @@
     "blockedStudents": []
   },
   "11 BE & ICT - Gen Math.xlsx": {
-    "hideTerm1": true,
+    "hideTerm1": false,
     "hideTerm2": false,
     "hideTerm3": true,
     "hideTerm4": true,
     "releaseFinals": {
       "Term 2": false
-    }
+    },
+    "hideAttendance": false,
+    "blockedStudents": []
   },
   "Intro to Org - BE.xlsx": {
     "hideTerm1": false,
-    "hideTerm2": true,
+    "hideTerm2": false,
     "hideTerm3": true,
     "hideTerm4": true,
     "hideAttendance": false,

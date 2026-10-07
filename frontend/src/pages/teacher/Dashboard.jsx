@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
 import api from '../../api';
@@ -1019,6 +1019,345 @@ function TemplatesPage() {
   );
 }
 
+// ─── Grades for a subject ─────────────────────────────────────────────────────
+function SubjectGrades({ subject }) {
+  const termNames = Object.keys(subject.terms || {});
+  const [activeTab, setActiveTab] = useState(termNames.length > 0 ? termNames[0] : 'Term 1');
+
+  useEffect(() => {
+    if (termNames.length > 0 && !termNames.includes(activeTab)) {
+      setActiveTab(termNames[0]);
+    }
+  }, [termNames, activeTab]);
+
+  if (termNames.length === 0) return <div className="empty-state"><p className="empty-desc">No grade data available for this subject yet.</p></div>;
+
+  const term = subject.terms[activeTab];
+  if (!term) return null;
+
+  const formatShortDate = (dateStr) => {
+    if (!dateStr || dateStr === '—') return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d)) return dateStr;
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${mm}/${dd}/${yy}`;
+  };
+
+  const renderScoreTable = (items, label) => {
+    if (!items || items.length === 0) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No {label} recorded.</p>;
+    
+    const hasWeights = items.some(i => typeof i.weight === 'number');
+    const total = items.reduce((s, i) => s + (i.hps || 0), 0);
+    const scored = items.reduce((s, i) => s + (i.score !== null && i.score !== undefined && i.score !== '' ? Number(i.score) : 0), 0);
+
+    let finalPct = 0;
+    if (hasWeights) {
+      items.forEach(i => {
+        if (i.score !== null && i.score !== undefined && i.score !== '') {
+          const ps = i.hps > 0 ? (Number(i.score) / i.hps) * 100 : 0;
+          finalPct += ps * (i.weight || 0);
+        }
+      });
+    } else {
+      finalPct = total > 0 ? (scored / total) * 100 : 0;
+    }
+
+    return (
+      <div>
+        <div className="table-wrapper">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Max</th>
+                {hasWeights && <th>Weight</th>}
+                <th>%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, i) => {
+                const pct = item.hps > 0 && item.score !== null && item.score !== '' ? Math.round((Number(item.score) / item.hps) * 100) : null;
+                return (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 500 }}>{item.label}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                      <span className="date-desktop">{item.date || '—'}</span>
+                      <span className="date-mobile">{formatShortDate(item.date)}</span>
+                    </td>
+                    <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{item.score ?? '—'}</span></td>
+                    <td style={{ color: 'var(--text-muted)' }}>{item.hps}</td>
+                    {hasWeights && <td style={{ color: 'var(--text-muted)' }}>{typeof item.weight === 'number' ? `${Math.round(item.weight * 100)}%` : '—'}</td>}
+                    <td>{pct !== null ? <span className={`badge ${pct >= 75 ? 'badge-success' : pct >= 50 ? 'badge-warning' : 'badge-error'}`}>{pct}%</span> : '—'}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{ fontWeight: 700, background: 'var(--grad-soft)' }}>
+                <td colSpan={2}><strong>Total</strong></td>
+                <td><span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{hasWeights ? '—' : scored}</span></td>
+                <td>{hasWeights ? '—' : total}</td>
+                {hasWeights && <td><strong>100%</strong></td>}
+                <td>{finalPct > 0 ? <span className="badge badge-brand">{Math.round(finalPct)}%</span> : '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Term Tabs */}
+      <div className="tabs">
+        {termNames.map(t => (
+          <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>{t}</button>
+        ))}
+      </div>
+
+      {term && (
+        <>
+          {/* Summary */}
+          <div className="grid-4">
+            {[
+              { label: 'Written Works', value: term.summary?.wwWS !== null ? `${term.summary.wwWS?.toFixed(2) ?? '—'}` : '—', icon: '📝' },
+              { label: 'Performance Tasks', value: term.summary?.ptWS !== null ? `${term.summary.ptWS?.toFixed(2) ?? '—'}` : '—', icon: '🎯' },
+              { label: 'Exams', value: term.summary?.examWS !== null ? `${term.summary.examWS?.toFixed(2) ?? '—'}` : '—', icon: '📋' },
+              { label: 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
+            ].map((s, i) => (
+              <div key={i} className="stat-card stat-card-sm">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
+                </div>
+                {s.isGrade ? <GradePill grade={s.value} size="lg" /> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Status banner if present */}
+          {term.summary?.status && (
+            (() => {
+              const statStr = String(term.summary.status).toLowerCase();
+              const hasGrade = term.summary.transmutedGrade !== null && term.summary.transmutedGrade !== undefined && term.summary.transmutedGrade !== '';
+              
+              if (!hasGrade || statStr.includes('hidden') || statStr.includes('progress') || statStr.includes('tba')) {
+                return (
+                  <div style={{ padding: '12px 18px', borderRadius: 12, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <div style={{ background: 'var(--brand-100)', padding: 6, borderRadius: '50%', display: 'flex' }}>
+                      <Activity size={18} color="var(--brand-600)" />
+                    </div>
+                    <span style={{ fontWeight: 600, color: 'var(--brand-700)', fontSize: '0.875rem' }}>
+                      Grades for this term are currently in progress or hidden by the instructor.
+                    </span>
+                  </div>
+                );
+              }
+
+              const isPassed = statStr.includes('pass');
+              
+              return (
+                <div style={{ padding: '12px 18px', borderRadius: 12, background: isPassed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${isPassed ? '#a7f3d0' : '#fecaca'}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <div style={{ background: isPassed ? '#d1fae5' : '#fee2e2', padding: 6, borderRadius: '50%', display: 'flex' }}>
+                    <Award size={18} color={isPassed ? '#059669' : '#dc2626'} />
+                  </div>
+                  <span style={{ fontWeight: 600, color: isPassed ? '#065f46' : '#991b1b', fontSize: '0.875rem' }}>
+                    {isPassed ? 'Congratulations! You passed this term.' : 'You did not pass this term.'}
+                  </span>
+                </div>
+              );
+            })()
+          )}
+
+          {/* Detail sections */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div>
+              <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet-500)', display: 'inline-block' }} />
+                Written Works
+              </h4>
+              {renderScoreTable(term.writtenWorks, 'written works')}
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-500)', display: 'inline-block' }} />
+                Performance Tasks
+              </h4>
+              {renderScoreTable(term.performanceTasks, 'performance tasks')}
+            </div>
+            {Object.keys(term.exams || {}).length > 0 && (
+              <div>
+                <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
+                  Examinations
+                </h4>
+                {renderScoreTable(Object.values(term.exams), 'exams')}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function StudentsOverview() {
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [details, setDetails] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+
+  useEffect(() => {
+    api.get('/teacher/students')
+      .then(r => setStudents(r.data.students || []))
+      .catch((err) => {
+        toast.error('Failed to load students. Did you restart the backend server?');
+        console.error('API Error:', err);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSelectStudent = async (studentNo) => {
+    setSelectedStudent(studentNo);
+    setDetailsLoading(true);
+    try {
+      const res = await api.get(`/teacher/students/${studentNo}`);
+      setDetails(res.data);
+    } catch {
+      toast.error('Failed to load student details.');
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.studentNo.includes(search));
+
+  return (
+    <>
+      <div className="card-body" style={{ padding: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <div className="search-wrapper">
+            <Search size={14} className="search-icon" />
+            <input type="text" className="search-input" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%' }} />
+          </div>
+        </div>
+        {loading ? <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><LoadingSpinner /></div> : (
+          <div style={{ maxHeight: 400, overflow: 'auto' }}>
+            <table className="data-table">
+              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects Handled</th><th>Action</th></tr></thead>
+              <tbody>
+                {filtered.slice(0, 50).map((s, i) => (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 500 }}>{s.name}</td>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
+                    <td><span className={`badge ${s.status === 'suspended' ? 'badge-error' : 'badge-success'}`}>{s.status || 'active'}</span></td>
+                    <td><span className="badge badge-neutral">{s.subjectCount}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleSelectStudent(s.studentNo)} title="View">
+                        <Eye size={13} />
+                      </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <Modal open={!!selectedStudent} onClose={() => { setSelectedStudent(null); setDetails(null); setSelectedSubject(null); }} title={selectedSubject ? "Subject Details" : "Student Details"} size="lg">
+        {detailsLoading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><LoadingSpinner size="lg" /></div> : details ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            {selectedSubject ? (
+              <>
+                <button className="btn btn-ghost btn-sm" onClick={() => setSelectedSubject(null)} style={{ alignSelf: 'flex-start', marginBottom: -8 }}>← Back to overview</button>
+                <div style={{ marginBottom: 12 }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{selectedSubject.info.subject}</h3>
+                  <p style={{ color: 'var(--text-muted)' }}>{selectedSubject.info.section} • {details.student.name}</p>
+                </div>
+                <SubjectGrades subject={selectedSubject} />
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--grad-main)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 700 }}>
+                    {details.student.name.split(' ').map(p => p[0]).join('').slice(0, 2)}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{details.student.name}</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>ID: {details.student.studentNo}</p>
+                    <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.875rem' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={14} /> {details.student.subjects.length} Handled Subjects</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid-2">
+                  <div className="card" style={{ padding: 16 }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>Contact Info</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
+                      <p><strong>Contact No:</strong> {details.profile.contactNo || '—'}</p>
+                      <p><strong>Address:</strong> {details.profile.address || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="card" style={{ padding: 16 }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>Guardian Info</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
+                      <p><strong>Name:</strong> {details.profile.parentName || '—'}</p>
+                      <p><strong>Contact No:</strong> {details.profile.parentContactNo || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Academic Performance (Handled by You)</h4>
+                  {details.student.subjects.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No handled subjects.</p> : (
+                    <div className="table-wrapper">
+                      <table className="data-table">
+                        <thead>
+                          <tr><th>Subject</th><th>Section</th><th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th></tr>
+                        </thead>
+                        <tbody>
+                          {details.student.subjects.map((sub, i) => {
+                            const gs = sub.gradingSummary || {};
+                            return (
+                              <tr key={i} onClick={() => setSelectedSubject(sub)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                <td style={{ fontWeight: 600, color: 'var(--brand-600)' }}>{sub.info.subject}</td>
+                                <td>{sub.info.section}</td>
+                                <td><GradePill grade={gs.term1 || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term2 || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term3 || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.finalGrade} /></td>
+                                <td>{gs.remarks ? (
+                                  <span className={`badge ${gs.remarks.toLowerCase() === 'passed' ? 'badge-success' : gs.remarks.toLowerCase() === 'failed' ? 'badge-danger' : 'badge-neutral'}`}>
+                                    {gs.remarks}
+                                  </span>
+                                ) : '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ) : <EmptyState icon={Users} title="Error" description="Could not load student details." />}
+      </Modal>
+    </>
+  );
+}
+
 // ─── Main Teacher Dashboard ───────────────────────────────────────────────────
 export default function TeacherDashboard() {
   const navigate = useNavigate();
@@ -1029,7 +1368,8 @@ export default function TeacherDashboard() {
 
   const nav = [
     { icon: LayoutDashboard, label: 'My Classes', active: !selectedClass && (page === 'classes' || page === ''), onClick: () => { setSelectedClass(null); navigate('/teacher'); } },
-    { icon: BookOpen, label: 'Templates', active: page === 'templates', onClick: () => { setSelectedClass(null); navigate('/teacher/templates'); } },
+    { icon: Users, label: 'Students', active: !selectedClass && page === 'students', onClick: () => { setSelectedClass(null); navigate('/teacher/students'); } },
+    { icon: BookOpen, label: 'Templates', active: !selectedClass && page === 'templates', onClick: () => { setSelectedClass(null); navigate('/teacher/templates'); } },
   ];
 
   return (
@@ -1046,6 +1386,12 @@ export default function TeacherDashboard() {
             ) : (
               <ClassListPage onSelectClass={setSelectedClass} />
             )}
+          </>
+        } />
+        <Route path="/students" element={
+          <>
+            <PageHeader title="Students" subtitle="View performance of students you handle" />
+            <div className="page-content fade-in"><div className="card"><div className="card-header"><h3 style={{ fontSize: '1rem' }}>Students Overview</h3></div><StudentsOverview /></div></div>
           </>
         } />
         <Route path="/templates" element={
