@@ -134,12 +134,12 @@ function ClassListPage({ onSelectClass }) {
   );
 }
 
-function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
+function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved, initialMode = "table" }) {
   const [headers, setHeaders] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTermTab, setActiveTermTab] = useState('Term 1');
-  const [activeComponentTab, setActiveComponentTab] = useState('ww');
+  const [activeComponentTab, setActiveComponentTab] = useState(initialMode === 'attendance' ? 'attendance' : 'ww');
 
   useEffect(() => {
     api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/headers`)
@@ -308,8 +308,8 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
             ))}
           </tbody>
         </table>
-      </div>
-        )}
+        </div>
+      )}
       </div>
     );
   };
@@ -317,22 +317,24 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved }) {
   return (
     <div style={{ padding: 20 }}>
       <div className="tabs" style={{ marginBottom: 16 }}>
-        <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
-        <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
-        <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} onClick={() => setActiveComponentTab('exam')}>Exams</button>
+        {initialMode !== 'attendance' && (
+          <>
+            <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
+            <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
+            <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} onClick={() => setActiveComponentTab('exam')}>Exams</button>
+          </>
+        )}
         <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
       </div>
-      {activeComponentTab !== 'attendance' && (
-        <div className="tabs" style={{ marginBottom: 16 }}>
+      <div className="tabs" style={{ marginBottom: 16 }}>
           {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
             headers.columns?.[t] && <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>
           ))}
         </div>
-      )}
       {activeComponentTab === 'ww' && renderTable(headers.columns?.[activeTermTab]?.ww, 'ww')}
       {activeComponentTab === 'pt' && renderTable(headers.columns?.[activeTermTab]?.pt, 'pt')}
       {activeComponentTab === 'exam' && renderTable(headers.columns?.[activeTermTab]?.exam, 'exam')}
-      {activeComponentTab === 'attendance' && renderTable(headers.attendance, 'attendance')}
+      {activeComponentTab === 'attendance' && renderTable(headers.attendance?.filter(a => !a.term || String(a.term).includes(activeTermTab.replace('Term ', ''))), 'attendance')}
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
         <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
@@ -459,11 +461,11 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
 
 // ─── Grade Edit Mode ──────────────────────────────────────────────────────────
 
-function GradeEditModal({ classInfo, onClose }) {
+function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [mode, setMode] = useState('table'); // 'table' | 'individual'
+  const [mode, setMode] = useState(initialMode); // 'table' | 'individual' | 'attendance'
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activeTermTab, setActiveTermTab] = useState('Term 1');
   const [activeComponentTab, setActiveComponentTab] = useState('summary'); // 'summary' | 'ww' | 'pt' | 'exam' | 'attendance'
@@ -572,24 +574,50 @@ function GradeEditModal({ classInfo, onClose }) {
     setSaving(false);
   };
 
-  const saveAllChanges = async () => {
+    const saveAllChanges = async () => {
     const studentNos = Object.keys(changes);
     if (studentNos.length === 0) { toast('No changes to save.'); return; }
     setSaving(true);
-    let successCount = 0;
-    for (const sNo of studentNos) {
-      const success = await saveStudentChanges(sNo);
-      if (success) successCount++;
+    
+    const updatesByStudent = {};
+    for (const studentNo of studentNos) {
+      const studentChanges = changes[studentNo];
+      const updates = [];
+      for (const termChanges of Object.values(studentChanges)) {
+        for (const upd of Object.values(termChanges)) {
+          updates.push(upd);
+        }
+      }
+      if (updates.length > 0) {
+        updatesByStudent[studentNo] = updates;
+      }
     }
-    if (successCount > 0) {
+
+    try {
+      await api.put(`/teacher/class/${encodeURIComponent(classInfo.fileName)}/batch-update`, { updatesByStudent });
+      setChanges({});
       await loadClassData();
-      toast.success('All changes saved!');
+      toast.success('Saved all changes successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Save failed.');
     }
+    
     setSaving(false);
   };
 
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.studentNo.includes(search));
+
+
   const termNames = students.length > 0 ? Object.keys(students[0].terms || {}) : ['Term 1', 'Term 2', 'Term 3'];
+  const visibleTerms = termNames;
+
+
+  useEffect(() => {
+    if (visibleTerms.length > 0) {
+      if (!activeTermTab) setActiveTermTab(visibleTerms[0]);
+    }
+  }, [activeTermTab, visibleTerms]);
+
 
   const renderStudentTermEditor = (student, termName) => {
     const term = student.terms?.[termName];
@@ -599,8 +627,7 @@ function GradeEditModal({ classInfo, onClose }) {
         {[
           ['Written Works', term.writtenWorks],
           ['Performance Tasks', term.performanceTasks],
-          ['Examinations', Object.values(term.exams || {})],
-          ['Attendance', student.attendance?.records?.filter(a => a.term === termName.replace('Term ', 'T')) || []]
+          ['Examinations', Object.values(term.exams || {})]
         ].map(([title, items]) => (
           items && items.length > 0 ? (
             <div key={title}>
@@ -663,16 +690,20 @@ function GradeEditModal({ classInfo, onClose }) {
           <Search size={16} className="search-icon" />
           <input type="text" className="search-input" placeholder="Search student..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
-          <button onClick={() => setMode('table')} className={`btn btn-sm ${mode === 'table' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Table View</button>
-          <button onClick={() => setMode('individual')} className={`btn btn-sm ${mode === 'individual' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Individual</button>
-        </div>
+        {initialMode !== 'attendance' ? (
+          <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <button onClick={() => setMode('table')} className={`btn btn-sm ${mode === 'table' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Table View</button>
+            <button onClick={() => setMode('individual')} className={`btn btn-sm ${mode === 'individual' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Individual</button>
+          </div>
+        ) : null}
         <button className="btn btn-secondary btn-sm" onClick={() => setManageColsOpen(true)}>
-          <Settings size={14} /> Manage Activities & Attendance
+          <Settings size={14} /> {initialMode === 'attendance' ? 'Manage Attendance' : 'Manage Activities & Attendance'}
         </button>
-        <button className="btn btn-secondary btn-sm" onClick={() => setSettingsOpen(true)}>
-          <Settings size={14} /> Class Settings
-        </button>
+        {initialMode !== 'attendance' && (
+          <button className="btn btn-secondary btn-sm" onClick={() => setSettingsOpen(true)}>
+            <Settings size={14} /> Class Settings
+          </button>
+        )}
         {Object.keys(changes).length > 0 && (
           <button className="btn btn-primary btn-sm" onClick={saveAllChanges} disabled={saving}>
             {saving ? <LoadingSpinner /> : <Save size={14} />} Save All ({Object.keys(changes).length})
@@ -680,8 +711,8 @@ function GradeEditModal({ classInfo, onClose }) {
         )}
       </div>
 
-      <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title="Manage Activities & Attendance" size="lg">
-        <ManageColumnsModal classInfo={classInfo} isTermLocked={isTermLocked} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} />
+      <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title={initialMode === 'attendance' ? 'Manage Attendance' : 'Manage Activities & Attendance'} size="lg">
+        <ManageColumnsModal classInfo={classInfo} isTermLocked={isTermLocked} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} initialMode={initialMode} />
       </Modal>
       <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Class Settings" size="md">
         <ClassSettingsModal classInfo={classInfo} settings={classSettings} onClose={() => setSettingsOpen(false)} onSaved={() => { loadClassData(); }} />
@@ -722,24 +753,119 @@ function GradeEditModal({ classInfo, onClose }) {
                   )}
                 </div>
                 <div className="tabs" style={{ marginBottom: 16 }}>
-                  {termNames.map(t => <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>)}
+                  {visibleTerms.map(t => <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>)}
                 </div>
                 {renderStudentTermEditor(selectedStudent, activeTermTab)}
               </div>
             )
+          ) : mode === 'attendance' ? (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <div className="tabs">
+                  {visibleTerms.map(t => <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>)}
+                </div>
+              </div>
+              <div className="table-wrapper" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+                <table className="data-table">
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white' }}>
+                    <tr>
+                      <th style={{ position: 'sticky', left: 0, zIndex: 11, background: 'var(--brand-50)', minWidth: 40, width: 40, padding: '8px 2px', textAlign: 'center' }}>#</th>
+                        <th style={{ position: 'sticky', left: 40, zIndex: 11, background: 'var(--brand-50)', minWidth: 220, width: 220, maxWidth: 220, padding: '8px 8px', overflow: 'hidden', textOverflow: 'ellipsis' }}>Student Name</th>
+                      {(() => {
+                        const attRecs = (students.find(s => s.attendance?.records?.length > 0))?.attendance?.records || [];
+                          const itemsArr = attRecs.filter(a => !a.term || String(a.term).includes(activeTermTab.replace('Term ', '')));
+                        return itemsArr.map((item, i) => (
+                          <th key={i} style={{ textAlign: 'center', minWidth: 60 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{!isNaN(new Date(item.date)) ? `${(new Date(item.date).getMonth() + 1).toString().padStart(2, '0')}/${new Date(item.date).getDate().toString().padStart(2, '0')}` : item.date}</div>
+                            <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                              {!isNaN(new Date(item.date)) ? ['Su','M','T','W','Th','F','Sa'][new Date(item.date).getDay()] : '-'}
+                            </div>
+                          </th>
+                        ));
+                      })()}
+                      <th style={{ position: 'sticky', right: 150, zIndex: 11, textAlign: 'center', minWidth: 50, width: 50, background: 'var(--brand-50)', borderLeft: '2px solid var(--border)', boxShadow: '-2px 0 5px rgba(0,0,0,0.05)' }} title="Total Present">P</th>
+                      <th style={{ position: 'sticky', right: 100, zIndex: 11, textAlign: 'center', minWidth: 50, width: 50, background: 'var(--brand-50)' }} title="Total Absent">A</th>
+                      <th style={{ position: 'sticky', right: 50, zIndex: 11, textAlign: 'center', minWidth: 50, width: 50, background: 'var(--brand-50)' }} title="Total Late">L</th>
+                      <th style={{ position: 'sticky', right: 0, zIndex: 11, textAlign: 'center', minWidth: 50, width: 50, background: 'var(--brand-50)' }} title="Total Excused">E</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((s, i) => {
+                      const attRecs = s.attendance?.records || [];
+                      const items = attRecs.filter(a => !a.term || String(a.term).includes(activeTermTab.replace('Term ', '')));
+                      
+                      return (
+                        <tr key={i}>
+                          <td style={{ position: 'sticky', left: 0, zIndex: 5, background: 'white', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 2px', minWidth: 40, width: 40 }}>{i + 1}</td>
+                            <td style={{ position: 'sticky', left: 40, zIndex: 5, background: 'white', fontWeight: 600, padding: '8px 8px', whiteSpace: 'nowrap', minWidth: 220, width: 220, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</td>
+                          {items.map((item, colIdx) => {
+                            const val = getScore(s.studentNo, 'Attendance', item.col, item.status);
+                            const changed = val !== item.status;
+                            return (
+                              <td key={colIdx} style={{ textAlign: 'center', padding: '4px', borderLeft: '1px solid var(--border)' }}>
+                                <input
+                                  type="text"
+                                  data-row={i}
+                                  data-col={colIdx}
+                                  className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
+                                  style={{
+                                    width: '36px', height: '36px', margin: '0 auto', textAlign: 'center', textTransform: 'uppercase',
+                                    fontWeight: val ? 700 : 400,
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border)',
+                                    background: val === 'P' ? '#d1fae5' : val === 'A' ? '#fee2e2' : val === 'L' ? '#fef3c7' : val === 'E' ? '#dbeafe' : 'var(--bg-input)',
+                                    color: val === 'P' ? '#065f46' : val === 'A' ? '#991b1b' : val === 'L' ? '#92400e' : val === 'E' ? '#1e40af' : 'inherit'
+                                  }}
+                                  maxLength="1"
+                                  disabled={isTermLocked(activeTermTab)}
+                                  value={val || ''}
+                                  title="P: Present, A: Absent, L: Late, E: Excused"
+                                  onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
+                                  onChange={e => {
+                                    let inputVal = e.target.value.toUpperCase();
+                                    updateScore(s.studentNo, 'Attendance', item.col, item.row, null, null, inputVal);
+                                  }}
+                                />
+                              </td>
+                            );
+                          })}
+                          {(() => {
+                            let p = 0, a = 0, l = 0, e = 0;
+                            items.forEach(item => {
+                              const val = getScore(s.studentNo, 'Attendance', item.col, item.status)?.toUpperCase();
+                              if (val === 'P') p++;
+                              if (val === 'A') a++;
+                              if (val === 'L') l++;
+                              if (val === 'E') e++;
+                            });
+                            return (
+                              <>
+                                <td style={{ position: 'sticky', right: 150, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, borderLeft: '2px solid var(--border)', boxShadow: '-2px 0 5px rgba(0,0,0,0.05)' }}>{p > 0 ? p : '-'}</td>
+                                <td style={{ position: 'sticky', right: 100, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--danger)' }}>{a > 0 ? a : '-'}</td>
+                                <td style={{ position: 'sticky', right: 50, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--warning)' }}>{l > 0 ? l : '-'}</td>
+                                <td style={{ position: 'sticky', right: 0, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--info)' }}>{e > 0 ? e : '-'}</td>
+                              </>
+                            );
+                          })()}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
             // Table mode: bulk editing and summary
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div className="tabs">
-                  {termNames.map(t => <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>)}
+                  {visibleTerms.map(t => <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>)}
                 </div>
                 <div className="tabs" style={{ gap: 4 }}>
                   <button className={`tab-btn ${activeComponentTab === 'summary' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('summary')}>Summary</button>
                   <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
                   <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
                   <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('exam')}>Exams</button>
-                  <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
                 </div>
               </div>
 
@@ -757,17 +883,13 @@ function GradeEditModal({ classInfo, onClose }) {
                         // Component-specific headers
                         (() => {
                           let itemsArr = [];
-                          if (activeComponentTab === 'attendance') {
-                            const attRecs = students[0]?.attendance?.records || [];
-                            itemsArr = attRecs.filter(a => a.term === activeTermTab.replace('Term ', 'T'));
-                          } else {
-                            const itemsObj = students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
-                            itemsArr = Array.isArray(itemsObj) ? itemsObj : Object.values(itemsObj || {});
-                          }
+                          const itemsObj = students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                          itemsArr = Array.isArray(itemsObj) ? itemsObj : Object.values(itemsObj || {});
+                          
                           return itemsArr.map((item, i) => (
-                            <th key={i} style={{ textAlign: 'center', minWidth: 100 }}>
-                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{activeComponentTab === 'attendance' ? item.date : item.label}</div>
-                              {activeComponentTab !== 'attendance' && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HPS: {item.hps}</div>}
+                            <th key={i} style={{ textAlign: 'center', minWidth: 60 }}>
+                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{item.label}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HPS: {item.hps}</div>
                             </th>
                           ));
                         })()
@@ -805,48 +927,25 @@ function GradeEditModal({ classInfo, onClose }) {
                             // Component-specific editable cells
                             (() => {
                               let items = [];
-                              if (activeComponentTab === 'attendance') {
-                                const attRecs = s.attendance?.records || [];
-                                items = attRecs.filter(a => a.term === activeTermTab.replace('Term ', 'T'));
-                              } else {
-                                const rawItems = s.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
-                                items = Array.isArray(rawItems) ? rawItems : Object.values(rawItems || {});
-                              }
+                              const rawItems = s.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                              items = Array.isArray(rawItems) ? rawItems : Object.values(rawItems || {});
+                              
                               return items.map((item, colIdx) => {
-                                const val = getScore(s.studentNo, activeComponentTab === 'attendance' ? 'Attendance' : activeTermTab, item.col, activeComponentTab === 'attendance' ? item.status : item.score);
-                                const changed = val !== (activeComponentTab === 'attendance' ? item.status : item.score);
+                                const val = getScore(s.studentNo, activeTermTab, item.col, item.score);
+                                const changed = val !== item.score;
                                 return (
                                   <td key={colIdx} style={{ textAlign: 'center' }}>
-                                    {activeComponentTab === 'attendance' ? (
-                                      <input
-                                        type="text"
-                                        data-row={i}
-                                        data-col={colIdx}
-                                        className={`score-input ${changed ? 'changed' : ''} ${val && !['P', 'A', 'L', 'E'].includes(val.toUpperCase()) ? 'error-cell' : ''}`}
-                                        style={{ width: '80px', margin: '0 auto', textAlign: 'center', textTransform: 'uppercase' }}
-                                        maxLength="1"
-                                        disabled={isTermLocked(activeTermTab)}
-                                        value={val || ''}
-                                        title="P: Present, A: Absent, L: Late, E: Excused"
-                                        onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
-                                        onChange={e => {
-                                          let inputVal = e.target.value.toUpperCase();
-                                          updateScore(s.studentNo, 'Attendance', item.col, item.row, null, null, inputVal);
-                                        }}
-                                      />
-                                    ) : (
-                                      <input
-                                        type="number" min="0" max={item.hps} step="0.25"
-                                        data-row={i}
-                                        data-col={colIdx}
-                                        className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
-                                        style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
-                                        disabled={isTermLocked(activeTermTab)}
-                                        value={val ?? ''}
-                                        onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
-                                        onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
-                                      />
-                                    )}
+                                    <input
+                                      type="number" min="0" max={item.hps} step="0.25"
+                                      data-row={i}
+                                      data-col={colIdx}
+                                      className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
+                                      style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
+                                      disabled={isTermLocked(activeTermTab)}
+                                      value={val ?? ''}
+                                      onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
+                                      onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
+                                    />
                                   </td>
                                 );
                               });
@@ -868,10 +967,12 @@ function GradeEditModal({ classInfo, onClose }) {
 
 // ─── Class Detail Page ────────────────────────────────────────────────────────
 function ClassDetailPage({ classInfo, onBack }) {
-  const [classData, setClassData] = useState(null);
+    const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [activeView, setActiveView] = useState('Grades');
   const [search, setSearch] = useState('');
+  const [activeAttTerm, setActiveAttTerm] = useState('Term 1');
   const [uploadLoading, setUploadLoading] = useState(false);
 
   useEffect(() => {
@@ -913,6 +1014,8 @@ function ClassDetailPage({ classInfo, onBack }) {
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
   const students = classData?.students || [];
   const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.studentNo.includes(search));
+  const termNames = students.length > 0 ? Object.keys(students[0].terms || {}) : ['Term 1', 'Term 2', 'Term 3'];
+  const visibleTerms = termNames;
 
   const handleCloseEditMode = () => {
     setEditMode(false);
@@ -931,7 +1034,7 @@ function ClassDetailPage({ classInfo, onBack }) {
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
         <button className="btn btn-primary btn-sm" onClick={() => setEditMode(true)}>
-          <Edit3 size={14} /> Edit Grades
+          <Edit3 size={14} /> {activeView === "Attendance" ? "Edit Attendance" : "Edit Grades"}
         </button>
         <button className="btn btn-secondary btn-sm" onClick={handleDownload}>
           <Download size={14} /> Download
@@ -943,45 +1046,166 @@ function ClassDetailPage({ classInfo, onBack }) {
       </div>
 
       <div className="card">
-        <div className="card-header">
-          <h3 style={{ fontSize: '1rem' }}>Student Grades — {students.length} students</h3>
-          <div className="search-wrapper">
-            <Search size={14} className="search-icon" />
-            <input type="text" className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ fontSize: '1rem', margin: 0 }}>Student {activeView} — {students.length} students</h3>
+          
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="tabs" style={{ background: 'var(--brand-50)', padding: 4, borderRadius: 8 }}>
+              <button 
+                className={`tab-btn ${activeView === 'Grades' ? 'active' : ''}`}
+                onClick={() => setActiveView('Grades')}
+                style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: activeView === 'Grades' ? 'white' : 'transparent', boxShadow: activeView === 'Grades' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: activeView === 'Grades' ? 600 : 500, color: activeView === 'Grades' ? 'var(--brand-600)' : 'var(--text-muted)' }}
+              >
+                Grades
+              </button>
+              <button 
+                className={`tab-btn ${activeView === 'Attendance' ? 'active' : ''}`}
+                onClick={() => setActiveView('Attendance')}
+                style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: activeView === 'Attendance' ? 'white' : 'transparent', boxShadow: activeView === 'Attendance' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: activeView === 'Attendance' ? 600 : 500, color: activeView === 'Attendance' ? 'var(--brand-600)' : 'var(--text-muted)' }}
+              >
+                Attendance
+              </button>
+            </div>
+
+            <div className="search-wrapper" style={{ margin: 0 }}>
+              <Search size={14} className="search-icon" />
+              <input type="text" className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
           </div>
         </div>
-        <div className="table-wrapper" style={{ borderRadius: 0 }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>#</th><th>Student Name</th><th>Student No.</th>
-                <th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, i) => {
-                const gs = s.gradingSummary;
-                return (
-                  <tr key={i}>
-                    <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-                    <td style={{ fontWeight: 600 }}>{s.name}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
-                    <td><GradePill grade={gs?.term1 || s.terms?.['Term 1']?.transmutedGrade} /></td>
-                    <td><GradePill grade={gs?.term2 || s.terms?.['Term 2']?.transmutedGrade} /></td>
-                    <td><GradePill grade={gs?.term3 || s.terms?.['Term 3']?.transmutedGrade} /></td>
-                    <td><GradePill grade={gs?.finalGrade} /></td>
-                    <td>{gs?.remarks ? <StatusBadge status={gs.remarks} /> : <span className="badge badge-neutral">Pending</span>}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+
+        {activeView === 'Grades' && (
+          <div className="table-wrapper" style={{ borderRadius: 0 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Student Name</th><th>Student No.</th>
+                  <th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s, i) => {
+                  const gs = s.gradingSummary;
+                  return (
+                    <tr key={i}>
+                      <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
+                      <td style={{ fontWeight: 600 }}>{s.name}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
+                      <td><GradePill grade={gs?.term1 || s.terms?.['Term 1']?.transmutedGrade} /></td>
+                      <td><GradePill grade={gs?.term2 || s.terms?.['Term 2']?.transmutedGrade} /></td>
+                      <td><GradePill grade={gs?.term3 || s.terms?.['Term 3']?.transmutedGrade} /></td>
+                      <td><GradePill grade={gs?.finalGrade} /></td>
+                      <td>{gs?.remarks ? <StatusBadge status={gs.remarks} /> : <span className="badge badge-neutral">Pending</span>}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeView === 'Attendance' && (
+          <>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: 10, alignItems: 'center', background: '#f8fafc' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>Select Term:</span>
+              <div className="tabs" style={{ gap: 4 }}>
+                {visibleTerms.map(t => (
+                  <button 
+                    key={t} 
+                    className={`tab-btn ${activeAttTerm === t ? 'active' : ''}`} 
+                    style={{ fontSize: '0.8125rem', padding: '4px 12px' }} 
+                    onClick={() => setActiveAttTerm(t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="table-wrapper" style={{ borderRadius: 0, maxHeight: '500px', overflowX: 'auto', maxWidth: '100%', width: '100%', minWidth: 0 }}>
+              <table className="data-table">
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'white' }}>
+                <tr>
+                  <th style={{ position: 'sticky', left: 0, zIndex: 11, background: 'var(--brand-50)', minWidth: 40, width: 40, padding: '8px 2px', textAlign: 'center' }}>#</th>
+                        <th style={{ position: 'sticky', left: 40, zIndex: 11, background: 'var(--brand-50)', minWidth: 220, width: 220, maxWidth: 220, padding: '8px 8px', overflow: 'hidden', textOverflow: 'ellipsis' }}>Student Name</th>
+                  {(() => {
+                    const attRecs = (filtered.find(s => s.attendance?.records?.length > 0))?.attendance?.records || [];
+                      const itemsArr = attRecs.filter(a => !a.term || String(a.term).includes(activeAttTerm.replace('Term ', '')));
+                    return itemsArr.map((item, i) => (
+                      <th key={i} style={{ textAlign: 'center', minWidth: 50, padding: '8px 4px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{!isNaN(new Date(item.date)) ? `${(new Date(item.date).getMonth() + 1).toString().padStart(2, '0')}/${new Date(item.date).getDate().toString().padStart(2, '0')}` : item.date}</div>
+                        <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: 4 }}>
+                          {!isNaN(new Date(item.date)) ? ['Su','M','T','W','Th','F','Sa'][new Date(item.date).getDay()] : '-'}
+                        </div>
+                      </th>
+                    ));
+                  })()}
+                  <th style={{ position: 'sticky', right: 120, zIndex: 11, textAlign: 'center', minWidth: 40, width: 40, background: 'var(--brand-50)', borderLeft: '2px solid var(--border)', boxShadow: '-2px 0 5px rgba(0,0,0,0.05)' }} title="Total Present">P</th>
+                  <th style={{ position: 'sticky', right: 80, zIndex: 11, textAlign: 'center', minWidth: 40, width: 40, background: 'var(--brand-50)' }} title="Total Absent">A</th>
+                  <th style={{ position: 'sticky', right: 40, zIndex: 11, textAlign: 'center', minWidth: 40, width: 40, background: 'var(--brand-50)' }} title="Total Late">L</th>
+                  <th style={{ position: 'sticky', right: 0, zIndex: 11, textAlign: 'center', minWidth: 40, width: 40, background: 'var(--brand-50)' }} title="Total Excused">E</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s, i) => {
+                  const attRecs = s.attendance?.records || [];
+                  const items = attRecs.filter(a => !a.term || String(a.term).includes(activeAttTerm.replace('Term ', '')));
+                  
+                  return (
+                    <tr key={i}>
+                      <td style={{ position: 'sticky', left: 0, zIndex: 5, background: 'white', color: 'var(--text-muted)', textAlign: 'center', padding: '8px 2px', minWidth: 40, width: 40 }}>{i + 1}</td>
+                            <td style={{ position: 'sticky', left: 40, zIndex: 5, background: 'white', fontWeight: 600, padding: '8px 8px', whiteSpace: 'nowrap', minWidth: 220, width: 220, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</td>
+                      {items.map((item, colIdx) => {
+                        let bg = 'transparent';
+                        let color = 'var(--text-muted)';
+                        if (item.status === 'P') { bg = '#d1fae5'; color = '#065f46'; }
+                        else if (item.status === 'A') { bg = '#fee2e2'; color = '#991b1b'; }
+                        else if (item.status === 'L') { bg = '#fef3c7'; color = '#92400e'; }
+                        else if (item.status === 'E') { bg = '#dbeafe'; color = '#1e40af'; }
+                        
+                        return (
+                          <td key={colIdx} style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px dashed var(--border)' }}>
+                            <div style={{
+                                width: 24, height: 24, margin: '0 auto',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                borderRadius: 6, background: bg, color: color,
+                                fontWeight: item.status ? 700 : 400, fontSize: '0.75rem'
+                            }}>
+                              {item.status || '—'}
+                            </div>
+                          </td>
+                        );
+                      })}
+                      {(() => {
+                        let p = 0, a = 0, l = 0, e = 0;
+                        items.forEach(item => {
+                          const val = item.status?.toUpperCase();
+                          if (val === 'P') p++;
+                          if (val === 'A') a++;
+                          if (val === 'L') l++;
+                          if (val === 'E') e++;
+                        });
+                        return (
+                          <>
+                            <td style={{ position: 'sticky', right: 120, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, borderLeft: '2px solid var(--border)', boxShadow: '-2px 0 5px rgba(0,0,0,0.05)' }}>{p > 0 ? p : '-'}</td>
+                            <td style={{ position: 'sticky', right: 80, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--danger)' }}>{a > 0 ? a : '-'}</td>
+                            <td style={{ position: 'sticky', right: 40, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--warning)' }}>{l > 0 ? l : '-'}</td>
+                            <td style={{ position: 'sticky', right: 0, zIndex: 5, background: 'white', textAlign: 'center', fontWeight: 600, color: 'var(--info)' }}>{e > 0 ? e : '-'}</td>
+                          </>
+                        );
+                      })()}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          </>
+        )}
       </div>
 
       {/* Edit Modal */}
-      <Modal open={editMode} onClose={handleCloseEditMode} title={`Edit Grades — ${classInfo.subject || classInfo.fileName}`} size="xl">
-        <GradeEditModal classInfo={classInfo} onClose={handleCloseEditMode} />
+      <Modal open={editMode} onClose={handleCloseEditMode} title={`Edit ${activeView === "Attendance" ? "Attendance" : "Grades"} — ${classInfo.subject || classInfo.fileName}`} size="xl">
+        <GradeEditModal classInfo={classInfo} onClose={handleCloseEditMode} initialMode={activeView === "Attendance" ? "attendance" : "table"} />
       </Modal>
     </div>
   );
@@ -1117,7 +1341,7 @@ function SubjectGrades({ subject }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Term Tabs */}
-      <div className="tabs">
+            <div className="tabs">
         {termNames.map(t => (
           <button key={t} className={`tab-btn ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>{t}</button>
         ))}
@@ -1408,4 +1632,4 @@ export default function TeacherDashboard() {
       </Routes>
     </AppLayout>
   );
-}
+}

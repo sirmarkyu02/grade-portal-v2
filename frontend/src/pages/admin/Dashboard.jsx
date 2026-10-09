@@ -22,6 +22,23 @@ function OverviewPage() {
     finally { setLoading(false); }
   };
 
+  const handleDownloadBackup = async () => {
+    try {
+      const toastId = toast.loading('Generating backup...');
+      const response = await api.get('/admin/backup', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `GradePortal_Backup_${Date.now()}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Backup downloaded!', { id: toastId });
+    } catch (err) {
+      toast.error('Failed to download backup.');
+    }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {

@@ -1,7 +1,7 @@
 {
   "adminPassword": "@Xdreal02",
   "portalName": "Student Grade Portal",
-  "schoolName": "",
+  "schoolName": "STI College Naga",
   "visibleTerms": {
     "Term 1": true,
     "Term 2": true,
@@ -18,7 +18,7 @@
   },
   "schoolInfo": {
     "name": "",
-    "address": "",
+    "address": "CB2, Triangulo, Naga City",
     "contact": ""
   },
   "notification": {

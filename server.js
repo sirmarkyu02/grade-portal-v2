@@ -770,6 +770,60 @@ app.post('/api/teacher/upload', requireAuth(['teacher']), uploadGrade.single('gr
   }
 });
 
+
+app.put('/api/teacher/class/:filename/batch-update', requireAuth(['teacher']), async (req, res) => {
+  const teacherId = req.session.userId;
+  const { filename } = req.params;
+  const { updatesByStudent } = req.body;
+  if (!teachersConfig[teacherId]?.files?.includes(filename)) return res.status(403).json({ error: 'Forbidden.' });
+
+  const lockedTerms = settingsConfig.termLocks || {};
+  const isLocked = (term) => typeof lockedTerms[term] === 'object' ? lockedTerms[term]?.[filename] : lockedTerms[term];
+
+  for (const studentNo of Object.keys(updatesByStudent)) {
+    const updates = updatesByStudent[studentNo];
+    if (updates && updates.some(u => u.termName !== 'Attendance' && isLocked(u.termName))) {
+      return res.status(403).json({ error: 'One or more of the specified terms are locked by the administrator.' });
+    }
+  }
+
+  try {
+    const XlsxPopulate = require('xlsx-populate');
+    const XLSX = require('xlsx');
+    const fpath = path.join(GRADES_DIR, filename);
+    const workbook = await XlsxPopulate.fromFileAsync(fpath);
+
+    for (const studentNo of Object.keys(updatesByStudent)) {
+      const updates = updatesByStudent[studentNo];
+      for (const update of updates) {
+        const sheet = workbook.sheet(update.termName);
+        if (sheet) {
+          const c = sheet.cell(update.row + 1, update.col + 1);
+          if (update.termName === 'Attendance') {
+            c.value((update.value === '' || update.value === null) ? null : update.value);
+          } else {
+            c.value((update.value === '' || update.value === null) ? null : Number(update.value));
+            if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
+            if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+          }
+        }
+      }
+    }
+
+    const calcPr = workbook._node.children.find(c => c.name === 'calcPr');
+    if (calcPr) {
+      calcPr.attributes.fullCalcOnLoad = 1;
+      calcPr.attributes.forceFullCalc = 1;
+    }
+    await workbook.toFileAsync(fpath);
+    loadAllData();
+    res.json({ success: true, message: 'Scores updated.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.get('/api/teacher/class/:filename', requireAuth(['teacher']), (req, res) => {
   const teacherId = req.session.userId;
   const filename = req.params.filename;
@@ -780,7 +834,7 @@ app.get('/api/teacher/class/:filename', requireAuth(['teacher']), (req, res) => 
     const sub = data.subjects.find(s => s.info.fileName === filename);
     if (!sub) continue;
     classStudents.push({
-      studentNo, name: data.name, gradingSummary: sub.gradingSummary,
+      studentNo, name: data.name, gradingSummary: sub.gradingSummary, attendance: sub.attendance,
       terms: {
         'Term 1': sub.terms['Term 1'] ? { transmutedGrade: sub.terms['Term 1'].summary?.transmutedGrade, status: sub.terms['Term 1'].summary?.status } : null,
         'Term 2': sub.terms['Term 2'] ? { transmutedGrade: sub.terms['Term 2'].summary?.transmutedGrade, status: sub.terms['Term 2'].summary?.status } : null,
