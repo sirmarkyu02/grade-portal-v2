@@ -32,5 +32,17 @@
     "hideAttendance": false,
     "blockedStudents": [],
     "releaseFinals": {}
+  },
+  "11 BE & ICT - Life & Career Skills.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": true,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "blockedStudents": [],
+    "releaseFinals": {},
+    "hideBreakdown": {
+      "Term 1": true
+    }
   }
 }

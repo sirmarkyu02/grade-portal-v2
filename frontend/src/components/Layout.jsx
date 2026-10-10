@@ -127,9 +127,12 @@ export function StatusBadge({ status }) {
   if (!status) return null;
   const s = String(status).toLowerCase();
   const isPassed = s.includes('pass') || s === 'passed';
+  const isHidden = s.includes('hidden') || s.includes('tba') || s.includes('progress');
+  const badgeClass = isPassed ? 'badge-success' : isHidden ? 'badge-neutral' : 'badge-error';
+  const icon = isPassed ? '✓' : isHidden ? '🕒' : '✕';
   return (
-    <span className={`badge ${isPassed ? 'badge-success' : 'badge-error'}`}>
-      {isPassed ? '✓' : '✗'} {status}
+    <span className={`badge ${badgeClass}`}>
+      {icon} {status}
     </span>
   );
 }

@@ -1,5 +1,133 @@
 [
   {
+    "id": "5569f1b9-145e-46e1-b4ff-9d7486e0003d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-10T09:19:36.213Z"
+  },
+  {
+    "id": "fcb94d26-bd3d-47bf-8a89-2b2cae20f333",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000498439",
+    "timestamp": "2026-10-10T09:16:23.595Z"
+  },
+  {
+    "id": "bb09ea1f-c892-4648-a187-f6e77872116f",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-10T09:15:07.436Z"
+  },
+  {
+    "id": "93c88c0b-fe5f-4334-8314-3708d948c795",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000498439",
+    "timestamp": "2026-10-10T08:42:24.793Z"
+  },
+  {
+    "id": "045fd10f-34a9-48d5-a074-16c99cf9a9b2",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T08:42:04.029Z"
+  },
+  {
+    "id": "df698945-50e8-45c3-a784-239622f038f4",
+    "userId": "02000498439",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-10T08:41:47.767Z"
+  },
+  {
+    "id": "b064277e-3fbb-4a9b-b647-14c66050f55c",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T05:41:12.365Z"
+  },
+  {
+    "id": "2699cdc3-eb0d-4a00-a229-6db38d36a058",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T01:59:50.260Z"
+  },
+  {
+    "id": "07e41be5-dcda-43b8-9aeb-f3641f53c14b",
+    "userId": "02000503190",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-10T01:55:30.685Z"
+  },
+  {
+    "id": "daa40efd-9d34-4575-a68a-f94a387f1939",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000490030",
+    "timestamp": "2026-10-10T01:53:24.127Z"
+  },
+  {
+    "id": "c4220a00-e70e-49ad-8019-8464b5adbc38",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T01:52:18.101Z"
+  },
+  {
+    "id": "2d3ce5bd-dbac-401d-be3b-0ce1877ffd47",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T00:26:32.615Z"
+  },
+  {
+    "id": "bdc5db24-659f-43e5-80b8-5f47ca0bf0d3",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-10T00:25:12.555Z"
+  },
+  {
+    "id": "defaf2ab-3d34-4fcb-a054-642f4c64832e",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T00:18:46.843Z"
+  },
+  {
+    "id": "8279996a-8782-42ca-97de-584348c9afb8",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-09T22:56:51.715Z"
+  },
+  {
+    "id": "f29685cd-83ef-4415-9f32-ea6b0807e41d",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-09T11:56:15.618Z"
+  },
+  {
     "id": "54890f22-a06f-4730-8ee6-375b52f4d452",
     "userId": "sirmarkyu",
     "role": "teacher",

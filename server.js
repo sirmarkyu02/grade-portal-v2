@@ -387,9 +387,13 @@ function loadAllData() {
         const sNo = cellVal(di, `M${row}`);
         const sName = cellVal(di, `N${row}`);
         if (sNo && sName) {
+          let strNo = String(sNo).trim();
+          if (strNo.length === 10 && strNo.startsWith('2')) {
+            strNo = '0' + strNo;
+          }
           classStudentsList.push({
-            studentNo: String(sNo),
-            studentName: String(sName),
+            studentNo: strNo,
+            studentName: String(sName).trim(),
             diRow: row,
             termRow: row + 1,
             attendanceRow: row - 2,
@@ -497,8 +501,13 @@ app.post('/api/auth/login', (req, res) => {
   const { userId, password } = req.body;
   if (!userId || !password) return res.status(400).json({ error: 'User ID and password are required.' });
 
-  const id = String(userId).trim();
+  let id = String(userId).trim();
   const pw = String(password).trim();
+
+  // Normalize student ID if length 10 and starts with '2'
+  if (id.length === 10 && id.startsWith('2')) {
+    id = '0' + id;
+  }
 
   // Admin
   if (id.toLowerCase() === 'admin') {
@@ -675,6 +684,20 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
         if (sub.gradingSummary) sub.gradingSummary.term4 = null;
       }
       if (cs.hideAttendance) sub.attendance = null;
+      if (cs.hideBreakdown) {
+        Object.keys(sub.terms).forEach(t => {
+          if (sub.terms[t]) {
+            delete sub.terms[t].writtenWorks;
+            delete sub.terms[t].performanceTasks;
+            delete sub.terms[t].exams;
+            if (sub.terms[t].summary) {
+              delete sub.terms[t].summary.wwWS;
+              delete sub.terms[t].summary.ptWS;
+              delete sub.terms[t].summary.examWS;
+            }
+          }
+        });
+      }
     }
     // Apply global visible terms filter
     const vt = settingsConfig.visibleTerms || {};
@@ -843,7 +866,7 @@ app.get('/api/teacher/class/:filename', requireAuth(['teacher']), (req, res) => 
     });
   }
   classStudents.sort((a, b) => a.name.localeCompare(b.name));
-  const classSettings = { hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, hideAttendance: false, blockedStudents: [], ...(classSettingsConfig[filename] || {}) };
+  const classSettings = { hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, hideAttendance: false, hideBreakdown: {}, blockedStudents: [], ...(classSettingsConfig[filename] || {}) };
   res.json({ success: true, students: classStudents, settings: classSettings });
 });
 
@@ -858,7 +881,7 @@ app.get('/api/teacher/class/:filename/full', requireAuth(['teacher']), (req, res
     if (sub) classStudents.push({ studentNo, name: data.name, terms: sub.terms, info: sub.info, attendance: sub.attendance });
   }
   classStudents.sort((a, b) => a.name.localeCompare(b.name));
-  const classSettings = { hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, hideAttendance: false, blockedStudents: [], releaseFinals: {}, ...(classSettingsConfig[filename] || {}) };
+  const classSettings = { hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, hideAttendance: false, hideBreakdown: {}, blockedStudents: [], releaseFinals: {}, ...(classSettingsConfig[filename] || {}) };
   res.json({ success: true, students: classStudents, settings: classSettings });
 });
 

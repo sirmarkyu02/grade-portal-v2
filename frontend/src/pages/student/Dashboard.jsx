@@ -149,9 +149,9 @@ function SubjectGrades({ subject }) {
           {/* Summary */}
           <div className="grid-4">
             {[
-              { label: 'Written Works', value: term.summary?.wwWS !== null ? `${term.summary.wwWS?.toFixed(2) ?? '—'}` : '—', icon: '📝' },
-              { label: 'Performance Tasks', value: term.summary?.ptWS !== null ? `${term.summary.ptWS?.toFixed(2) ?? '—'}` : '—', icon: '🎯' },
-              { label: 'Exams', value: term.summary?.examWS !== null ? `${term.summary.examWS?.toFixed(2) ?? '—'}` : '—', icon: '📋' },
+              ...(term.writtenWorks ? [{ label: 'Written Works', value: term.summary?.wwWS !== undefined && term.summary?.wwWS !== null && term.writtenWorks?.length > 0 ? `${term.summary.wwWS.toFixed(2)}` : '—', icon: '📝' }] : []),
+              ...(term.performanceTasks ? [{ label: 'Performance Tasks', value: term.summary?.ptWS !== undefined && term.summary?.ptWS !== null && term.performanceTasks?.length > 0 ? `${term.summary.ptWS.toFixed(2)}` : '—', icon: '🎯' }] : []),
+              ...(term.exams ? [{ label: 'Exams', value: term.summary?.examWS !== undefined && term.summary?.examWS !== null && Object.keys(term.exams || {}).length > 0 ? `${term.summary.examWS.toFixed(2)}` : '—', icon: '📋' }] : []),
               { label: 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
             ].map((s, i) => (
               <div key={i} className="stat-card stat-card-sm">
@@ -200,21 +200,25 @@ function SubjectGrades({ subject }) {
 
           {/* Detail sections */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div>
-              <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet-500)', display: 'inline-block' }} />
-                Written Works
-              </h4>
-              {renderScoreTable(term.writtenWorks, 'written works')}
-            </div>
-            <div>
-              <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-500)', display: 'inline-block' }} />
-                Performance Tasks
-              </h4>
-              {renderScoreTable(term.performanceTasks, 'performance tasks')}
-            </div>
-            {Object.keys(term.exams || {}).length > 0 && (
+            {term.writtenWorks && (
+              <div>
+                <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet-500)', display: 'inline-block' }} />
+                  Written Works
+                </h4>
+                {renderScoreTable(term.writtenWorks, 'written works')}
+              </div>
+            )}
+            {term.performanceTasks && (
+              <div>
+                <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--brand-500)', display: 'inline-block' }} />
+                  Performance Tasks
+                </h4>
+                {renderScoreTable(term.performanceTasks, 'performance tasks')}
+              </div>
+            )}
+            {term.exams && Object.keys(term.exams).length > 0 && (
               <div>
                 <h4 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-success)', display: 'inline-block' }} />
@@ -370,13 +374,13 @@ function SubjectPage({ studentData }) {
                       <p style={{ fontWeight: 700 }}>{sub.info.subject}</p>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{sub.info.section} • {sub.info.instructor}</p>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        WW: {sub.info.weights?.writtenOral}% | PT: {sub.info.weights?.performanceTask}% | Exam: {sub.info.weights?.termExam}%
+                        WW: {sub.info.weights?.writtenOral ? Math.round(sub.info.weights.writtenOral * 100) : 0}% | PT: {sub.info.weights?.performanceTask ? Math.round(sub.info.weights.performanceTask * 100) : 0}% | Exam: {sub.info.weights?.termExam ? Math.round(sub.info.weights.termExam * 100) : 0}%
                       </p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {sub.gradingSummary?.finalGrade && <GradePill grade={sub.gradingSummary.finalGrade} />}
-                    {sub.gradingSummary?.remarks && <StatusBadge status={sub.gradingSummary.remarks} />}
+                    {sub.gradingSummary?.remarks && sub.gradingSummary.remarks !== 'Hidden' && <StatusBadge status={sub.gradingSummary.remarks} />}
                     <span style={{ color: 'var(--violet-400)' }}>›</span>
                   </div>
                 </div>

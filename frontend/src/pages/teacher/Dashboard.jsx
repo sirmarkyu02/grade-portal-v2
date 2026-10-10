@@ -262,7 +262,7 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved, initial
                   {type !== 'attendance' && <th>HPS</th>}
                   <th>Label / Term</th>
                   <th>Date</th>
-                  {type !== 'exam' && <th>Action</th>}
+                  {type !== 'exam' && <th className="no-print">Action</th>}
                 </tr>
               </thead>
               <tbody>
@@ -427,30 +427,48 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
               </div>
 
               {!isTermHidden && (
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
-                  paddingTop: 16,
-                  borderTop: '1px dashed var(--border)' 
-                }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Show Final Grade to Students
-                  </span>
-                  <label className="toggle toggle-sm">
-                    <input 
-                      type="checkbox" 
-                      checked={isFinalReleased} 
-                      onChange={e => updateSetting('releaseFinals', e.target.checked, t.name)} 
-                    />
-                    <span className="toggle-slider" />
-                  </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, borderTop: '1px dashed var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                        Show Final Grade to Students
+                      </div>
+                    </div>
+                    <label className="toggle toggle-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={isFinalReleased} 
+                        onChange={e => updateSetting('releaseFinals', e.target.checked, t.name)} 
+                      />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                        Hide Grade Breakdown
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Only final grade shown (WW, PT, Exams hidden)
+                      </div>
+                    </div>
+                    <label className="toggle toggle-sm">
+                      <input 
+                        type="checkbox" 
+                        checked={form.hideBreakdown?.[t.name] === true} 
+                        onChange={e => updateSetting('hideBreakdown', e.target.checked, t.name)} 
+                      />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+
 
       <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end' }}>
         <button className="btn btn-ghost" onClick={onClose}>Close</button>
@@ -686,7 +704,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '12px 0', flexWrap: 'wrap' }}>
-        <div className="search-wrapper">
+        <div className="search-wrapper no-print">
           <Search size={16} className="search-icon" />
           <input type="text" className="search-input" placeholder="Search student..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -696,8 +714,11 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
             <button onClick={() => setMode('individual')} className={`btn btn-sm ${mode === 'individual' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Individual</button>
           </div>
         ) : null}
-        <button className="btn btn-secondary btn-sm" onClick={() => setManageColsOpen(true)}>
+        <button className="btn btn-secondary btn-sm no-print" onClick={() => setManageColsOpen(true)}>
           <Settings size={14} /> {initialMode === 'attendance' ? 'Manage Attendance' : 'Manage Activities & Attendance'}
+        </button>
+        <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
+          🖨️ Print (Browser)
         </button>
         {initialMode !== 'attendance' && (
           <button className="btn btn-secondary btn-sm" onClick={() => setSettingsOpen(true)}>
@@ -877,7 +898,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                       <th style={{ position: 'sticky', left: 40, zIndex: 11, background: 'var(--brand-50)', minWidth: 150 }}>Student Name</th>
                       {activeComponentTab === 'summary' ? (
                         <>
-                          <th>Student No.</th><th>WW Score</th><th>PT Score</th><th>Exam Score</th><th>Initial</th><th>Final Grade</th><th>Status</th><th>Action</th>
+                          <th>Student No.</th><th>WW Score</th><th>PT Score</th><th>Exam Score</th><th>Initial</th><th>Final Grade</th><th>Status</th><th className="no-print">Action</th>
                         </>
                       ) : (
                         // Component-specific headers
@@ -917,7 +938,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                               <td>{summ?.initialGrade ?? '—'}</td>
                               <td><GradePill grade={summ?.transmutedGrade} /></td>
                               <td><StatusBadge status={summ?.status} /></td>
-                              <td>
+                              <td className="no-print">
                                 <button className="btn btn-ghost btn-sm" onClick={() => { setSelectedStudent(s); setMode('individual'); }}>
                                   <Edit3 size={13} /> Edit
                                 </button>
@@ -1033,13 +1054,16 @@ function ClassDetailPage({ classInfo, onBack }) {
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-sm" onClick={() => setEditMode(true)}>
+        <button className="btn btn-primary btn-sm no-print" onClick={() => setEditMode(true)}>
           <Edit3 size={14} /> {activeView === "Attendance" ? "Edit Attendance" : "Edit Grades"}
         </button>
-        <button className="btn btn-secondary btn-sm" onClick={handleDownload}>
-          <Download size={14} /> Download
+        <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
+          🖨️ Print (Browser)
         </button>
-        <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', position: 'relative' }}>
+        <button className="btn btn-secondary btn-sm no-print" onClick={handleDownload}>
+          <Download size={14} /> Export Template (Excel)
+        </button>
+        <label className="btn btn-secondary btn-sm no-print" style={{ cursor: 'pointer', position: 'relative' }}>
           <Upload size={14} /> Re-upload
           <input type="file" accept=".xlsx" style={{ display: 'none', position: 'absolute' }} onChange={e => { const f = e.target.files[0]; if (f) handleReupload(f); }} />
         </label>
@@ -1362,7 +1386,7 @@ function SubjectGrades({ subject }) {
                   <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
                   <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
                 </div>
-                {s.isGrade ? <GradePill grade={s.value} size="lg" /> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
+                {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
               </div>
             ))}
           </div>
@@ -1375,7 +1399,7 @@ function SubjectGrades({ subject }) {
               
               if (!hasGrade || statStr.includes('hidden') || statStr.includes('progress') || statStr.includes('tba')) {
                 return (
-                  <div style={{ padding: '12px 18px', borderRadius: 12, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                  <div className="status-banner" style={{ padding: '12px 18px', borderRadius: 12, background: 'var(--brand-50)', border: '1px solid var(--brand-100)', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                     <div style={{ background: 'var(--brand-100)', padding: 6, borderRadius: '50%', display: 'flex' }}>
                       <Activity size={18} color="var(--brand-600)" />
                     </div>
@@ -1389,7 +1413,7 @@ function SubjectGrades({ subject }) {
               const isPassed = statStr.includes('pass');
               
               return (
-                <div style={{ padding: '12px 18px', borderRadius: 12, background: isPassed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${isPassed ? '#a7f3d0' : '#fecaca'}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <div className="status-banner" style={{ padding: '12px 18px', borderRadius: 12, background: isPassed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${isPassed ? '#a7f3d0' : '#fecaca'}`, display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                   <div style={{ background: isPassed ? '#d1fae5' : '#fee2e2', padding: 6, borderRadius: '50%', display: 'flex' }}>
                     <Award size={18} color={isPassed ? '#059669' : '#dc2626'} />
                   </div>
@@ -1471,7 +1495,7 @@ function StudentsOverview() {
     <>
       <div className="card-body" style={{ padding: 0 }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-          <div className="search-wrapper">
+          <div className="search-wrapper no-print">
             <Search size={14} className="search-icon" />
             <input type="text" className="search-input" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%' }} />
           </div>
@@ -1479,7 +1503,7 @@ function StudentsOverview() {
         {loading ? <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><LoadingSpinner /></div> : (
           <div style={{ maxHeight: 400, overflow: 'auto' }}>
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects Handled</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects Handled</th><th className="no-print">Action</th></tr></thead>
               <tbody>
                 {filtered.slice(0, 50).map((s, i) => (
                   <tr key={i}>
@@ -1507,7 +1531,7 @@ function StudentsOverview() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {selectedSubject ? (
               <>
-                <button className="btn btn-ghost btn-sm" onClick={() => setSelectedSubject(null)} style={{ alignSelf: 'flex-start', marginBottom: -8 }}>← Back to overview</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}><button className="btn btn-ghost btn-sm no-print" onClick={() => setSelectedSubject(null)} style={{ alignSelf: 'flex-start', marginBottom: -8 }}>← Back to overview</button><button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>🖨️ Print (Browser)</button></div>
                 <div style={{ marginBottom: 12 }}>
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{selectedSubject.info.subject}</h3>
                   <p style={{ color: 'var(--text-muted)' }}>{selectedSubject.info.section} • {details.student.name}</p>
@@ -1516,6 +1540,7 @@ function StudentsOverview() {
               </>
             ) : (
               <>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%', marginBottom: -10 }}><button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>🖨️ Print (Browser)</button></div>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                   <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--grad-main)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 700 }}>
                     {details.student.name.split(' ').map(p => p[0]).join('').slice(0, 2)}
