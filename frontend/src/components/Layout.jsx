@@ -99,16 +99,45 @@ export function AppLayout({ children, navItems, role }) {
       {/* Main Content */}
       <main className="main-content">
         {/* Mobile header */}
-        <div style={{ display: 'none', padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'white', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50 }} id="mobile-header">
-          <button onClick={() => setSidebarOpen(true)} className="btn btn-ghost btn-icon">
+        <div className="mobile-header" id="mobile-header">
+          <button onClick={() => setSidebarOpen(true)} className="btn btn-ghost btn-icon mobile-menu-btn" aria-label="Open menu">
             <Menu size={20} />
           </button>
-          <div className="sidebar-logo" style={{ width: 28, height: 28 }}>
-            <GraduationCap size={16} color="white" />
+          <div className="mobile-header-brand">
+            <div className="sidebar-logo" style={{ width: 28, height: 28 }}>
+              <GraduationCap size={16} color="white" />
+            </div>
+            <span className="mobile-header-title">{portalName}</span>
           </div>
-          <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{portalName}</span>
+          <button onClick={() => setSidebarOpen(true)} className="mobile-avatar-btn" aria-label="Open profile drawer">
+            <div className="avatar avatar-sm">
+              {user?.photo ? <img src={user.photo} alt={user.name} /> : initials(user?.name)}
+            </div>
+          </button>
         </div>
         {children}
+
+        {/* Mobile Bottom Navigation Bar (Hidden on desktop via CSS) */}
+        <nav className="mobile-bottom-nav" aria-label="Mobile Navigation">
+          {navItems
+            .filter(item => item.type !== 'section' && item.icon)
+            .slice(0, 5)
+            .map((item, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  setSidebarOpen(false);
+                  item.onClick?.();
+                }}
+                className={`mobile-bottom-nav-item ${item.active ? 'active' : ''}`}
+              >
+                <item.icon size={19} className="mobile-bottom-nav-icon" />
+                <span className="mobile-bottom-nav-label">{item.label}</span>
+                {item.badge && <span className="mobile-bottom-nav-badge">{item.badge}</span>}
+              </button>
+            ))}
+        </nav>
       </main>
 
       <style>{`
@@ -168,9 +197,10 @@ export function Modal({ open, onClose, title, size = 'md', children, footer }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className={`modal modal-${size}`}>
+        <div className="modal-drag-handle" />
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
-          <button onClick={onClose} className="btn btn-ghost btn-icon btn-sm">
+          <button onClick={onClose} className="btn btn-ghost btn-icon btn-sm" aria-label="Close modal">
             <X size={16} />
           </button>
         </div>

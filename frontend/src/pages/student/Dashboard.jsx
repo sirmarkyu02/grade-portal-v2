@@ -310,7 +310,7 @@ function OverviewPage({ studentData, profile }) {
             {subjects.map((sub, i) => {
               const gs = sub.gradingSummary;
               return (
-                <div key={i} className="card" style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div key={i} className="card student-subject-card" style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--violet-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--violet-600)' }}>
                       <BookOpen size={24} />
@@ -362,7 +362,7 @@ function SubjectPage({ studentData }) {
           <h2 style={{ fontWeight: 800, marginBottom: 16 }}>My Grades</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {subjects.map((sub, i) => (
-              <div key={i} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setSelected(i)}
+              <div key={i} className="card student-subject-card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setSelected(i)}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>

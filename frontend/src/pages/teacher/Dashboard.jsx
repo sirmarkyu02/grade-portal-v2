@@ -764,6 +764,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                             ) : (
                               <input
                                 type="number" min="0" max={item.hps} step="0.25"
+                                inputMode="decimal"
                                 className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
                                 disabled={isTermLocked(termName)}
                                 value={val ?? ''}
@@ -1129,6 +1130,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                                   <td key={colIdx} style={{ textAlign: 'center' }}>
                                     <input
                                       type="number" min="0" max={item.hps} step="0.25"
+                                      inputMode="decimal"
                                       data-row={i}
                                       data-col={colIdx}
                                       className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}

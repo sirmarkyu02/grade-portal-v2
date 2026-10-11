@@ -117,6 +117,9 @@ export default function LoginPage() {
                   placeholder="e.g. 2024000001"
                   value={userId}
                   onChange={e => { setUserId(e.target.value); setError(''); }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   autoFocus
                   id="userId"
                 />
@@ -133,14 +136,18 @@ export default function LoginPage() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(''); }}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
                   style={{ paddingRight: 44 }}
                   id="password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(v => !v)}
-                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', padding: 0, display: 'flex' }}
+                  style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 44, background: 'none', border: 'none', color: 'var(--text-muted)', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   tabIndex={-1}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
