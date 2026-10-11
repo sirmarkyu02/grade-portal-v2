@@ -306,5 +306,54 @@
     },
     "createdAt": 1791623783598,
     "lastActive": 1791623932928
+  },
+  "0d7b64c7-a77d-4f68-a709-17b55e7dbd5e": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791646884235,
+    "lastActive": 1791646884271
+  },
+  "069b756f-9a6f-49e3-ac8f-0840785e0842": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "impersonatedBy": "admin",
+      "impersonatedAt": "2026-10-10T15:41:24.247Z",
+      "name": "JOHN MARQ E. RAMOS",
+      "department": "SHS"
+    },
+    "createdAt": 1791646884247,
+    "lastActive": 1791646884260
+  },
+  "4ba8ea30-02ef-4925-a3bf-1c294f3cdea8": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791647204815,
+    "lastActive": 1791647204815
+  },
+  "58dd7f62-f99c-4835-8e3b-5a86a873f730": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791647204827,
+    "lastActive": 1791647204827
+  },
+  "492822ef-0ee8-42cf-a930-d55234e23531": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791647418592,
+    "lastActive": 1791647418592
+  },
+  "eab5d4af-882f-4fb1-9447-2adcb1077f01": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "name": "JOHN MARQ E. RAMOS"
+    },
+    "createdAt": 1791673082895,
+    "lastActive": 1791673082895
   }
 }

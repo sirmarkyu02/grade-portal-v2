@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { GraduationCap, LogOut, Menu, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { GraduationCap, LogOut, Menu, X, RotateCcw, UserCheck } from 'lucide-react';
 import { useAuth } from '../App';
 import toast from 'react-hot-toast';
 
 export function AppLayout({ children, navItems, role }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isImpersonating, exitImpersonation } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [portalName, setPortalName] = useState('Grade Portal');
 
@@ -53,7 +53,14 @@ export function AppLayout({ children, navItems, role }) {
           </div>
           <div style={{ minWidth: 0 }}>
             <p className="profile-name">{user?.name || 'User'}</p>
-            <span style={{ display: 'inline-block', background: roleBadgeColor, color: roleBadgeText, fontSize: '0.6875rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999, marginTop: 2 }}>{roleLabel}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+              <span style={{ display: 'inline-block', background: roleBadgeColor, color: roleBadgeText, fontSize: '0.6875rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999 }}>{roleLabel}</span>
+              {isImpersonating && (
+                <span className="impersonation-profile-tag" title="Account accessed via Admin Impersonation">
+                  <UserCheck size={10} /> Impersonated
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -70,7 +77,18 @@ export function AppLayout({ children, navItems, role }) {
           })}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {isImpersonating && (
+            <button
+              onClick={exitImpersonation}
+              className="nav-item"
+              style={{ color: 'var(--brand-600)', background: 'var(--brand-50)', width: '100%', fontWeight: 600, borderRadius: 8, padding: '8px 12px' }}
+              title="Return to Administrator Dashboard"
+            >
+              <RotateCcw size={16} className="nav-icon" />
+              <span>Return to Admin</span>
+            </button>
+          )}
           <button onClick={handleLogout} className="nav-item" style={{ color: 'var(--color-error)', width: '100%' }}>
             <LogOut size={18} className="nav-icon" />
             <span>Sign Out</span>
@@ -192,3 +210,74 @@ export function EmptyState({ icon: Icon, title, description, action }) {
     </div>
   );
 }
+
+// ─── Dropdown Menu System ───────────────────────────────────────────────────
+export function DropdownMenu({ trigger, children, align = 'right', className = '' }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className={`dropdown-container ${className}`} ref={containerRef}>
+      <div onClick={() => setOpen(prev => !prev)} className="dropdown-trigger">
+        {typeof trigger === 'function' ? trigger({ open }) : trigger}
+      </div>
+      {open && (
+        <div
+          className={`dropdown-menu dropdown-menu-${align}`}
+          onClick={(e) => {
+            // Close dropdown unless clicking directly inside a file input
+            if (e.target.tagName !== 'INPUT') {
+              setOpen(false);
+            }
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DropdownItem({ icon, title, subtitle, onClick, danger, disabled }) {
+  return (
+    <button
+      type="button"
+      className={`dropdown-item ${danger ? 'dropdown-item-danger' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {icon && <div className="dropdown-item-icon">{icon}</div>}
+      <div className="dropdown-item-content">
+        <div className="dropdown-item-title">{title}</div>
+        {subtitle && <div className="dropdown-item-sub">{subtitle}</div>}
+      </div>
+    </button>
+  );
+}
+
+export function DropdownDivider() {
+  return <div className="dropdown-divider" />;
+}
+
+export function DropdownHeader({ children }) {
+  return <div className="dropdown-section-header">{children}</div>;
+}
+

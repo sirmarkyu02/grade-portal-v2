@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award } from 'lucide-react';
-import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
+import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award, Printer, FileSpreadsheet, ChevronDown, Sliders } from 'lucide-react';
+import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, DropdownMenu, DropdownItem, DropdownDivider, DropdownHeader } from '../../components/Layout';
 import { useAuth } from '../../App';
 import api from '../../api';
 import toast from 'react-hot-toast';
@@ -477,6 +477,89 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
   );
 }
 
+// ─── Unified Class Configuration Modal ───────────────────────────────────────
+function ClassConfigModal({ classInfo, isTermLocked = () => false, settings = {}, initialTab = 'activities', onClose, onSaved, initialMode = 'table' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg-input)',
+        padding: '0 20px',
+        gap: 8,
+        alignItems: 'center'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('activities')}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '12px 18px',
+            border: 'none',
+            background: 'transparent',
+            borderBottom: activeTab === 'activities' ? '2.5px solid var(--brand-600)' : '2.5px solid transparent',
+            color: activeTab === 'activities' ? 'var(--brand-600)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'activities' ? 700 : 500,
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Sliders size={16} />
+          <span>{initialMode === 'attendance' ? 'Manage Attendance Dates' : 'Activities & Attendance'}</span>
+        </button>
+
+        {initialMode !== 'attendance' && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('visibility')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '12px 18px',
+              border: 'none',
+              background: 'transparent',
+              borderBottom: activeTab === 'visibility' ? '2.5px solid var(--brand-600)' : '2.5px solid transparent',
+              color: activeTab === 'visibility' ? 'var(--brand-600)' : 'var(--text-muted)',
+              fontWeight: activeTab === 'visibility' ? 700 : 500,
+              fontSize: '0.875rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Eye size={16} />
+            <span>Grade & Term Visibility</span>
+          </button>
+        )}
+      </div>
+
+      <div style={{ padding: 0 }}>
+        {activeTab === 'activities' ? (
+          <ManageColumnsModal
+            classInfo={classInfo}
+            isTermLocked={isTermLocked}
+            onClose={onClose}
+            onSaved={onSaved}
+            initialMode={initialMode}
+          />
+        ) : (
+          <ClassSettingsModal
+            classInfo={classInfo}
+            settings={settings}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Grade Edit Mode ──────────────────────────────────────────────────────────
 
 function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
@@ -487,8 +570,8 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [activeTermTab, setActiveTermTab] = useState('Term 1');
   const [activeComponentTab, setActiveComponentTab] = useState('summary'); // 'summary' | 'ww' | 'pt' | 'exam' | 'attendance'
-  const [manageColsOpen, setManageColsOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configTab, setConfigTab] = useState('activities'); // 'activities' | 'visibility'
   const [classSettings, setClassSettings] = useState({});
   const [termLocks, setTermLocks] = useState({});
   const isTermLocked = (term) => typeof termLocks[term] === 'object' ? termLocks[term]?.[classInfo.fileName] : termLocks[term];
@@ -703,40 +786,128 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '12px 0', flexWrap: 'wrap' }}>
-        <div className="search-wrapper no-print">
-          <Search size={16} className="search-icon" />
-          <input type="text" className="search-input" placeholder="Search student..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        {initialMode !== 'attendance' ? (
-          <div style={{ display: 'flex', background: 'var(--bg-input)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
-            <button onClick={() => setMode('table')} className={`btn btn-sm ${mode === 'table' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Table View</button>
-            <button onClick={() => setMode('individual')} className={`btn btn-sm ${mode === 'individual' ? 'btn-primary' : 'btn-ghost'}`} style={{ borderRadius: 0 }}>Individual</button>
+      {/* Redesigned Edit Mode Toolbar */}
+      <div className="edit-toolbar no-print">
+        {/* Left: Search & Mode Toggle */}
+        <div className="edit-toolbar-left">
+          <div className="search-wrapper" style={{ margin: 0, minWidth: 220 }}>
+            <Search size={15} className="search-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search student..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                  border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)'
+                }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
-        ) : null}
-        <button className="btn btn-secondary btn-sm no-print" onClick={() => setManageColsOpen(true)}>
-          <Settings size={14} /> {initialMode === 'attendance' ? 'Manage Attendance' : 'Manage Activities & Attendance'}
-        </button>
-        <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
-          🖨️ Print (Browser)
-        </button>
-        {initialMode !== 'attendance' && (
-          <button className="btn btn-secondary btn-sm" onClick={() => setSettingsOpen(true)}>
-            <Settings size={14} /> Class Settings
+
+          {initialMode !== 'attendance' && (
+            <div className="segmented-control">
+              <button
+                type="button"
+                onClick={() => setMode('table')}
+                className={`segmented-btn ${mode === 'table' ? 'active' : ''}`}
+              >
+                Table View
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode('individual')}
+                className={`segmented-btn ${mode === 'individual' ? 'active' : ''}`}
+              >
+                Individual
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Print, Grouped Settings & Save */}
+        <div className="edit-toolbar-right">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => window.print()}
+            title="Print record"
+          >
+            <Printer size={14} />
+            <span>Print</span>
           </button>
-        )}
-        {Object.keys(changes).length > 0 && (
-          <button className="btn btn-primary btn-sm" onClick={saveAllChanges} disabled={saving}>
-            {saving ? <LoadingSpinner /> : <Save size={14} />} Save All ({Object.keys(changes).length})
-          </button>
-        )}
+
+          {/* Grouped Settings Dropdown */}
+          <DropdownMenu
+            trigger={
+              <button type="button" className="btn btn-secondary btn-sm">
+                <Settings size={14} />
+                <span>Class Options</span>
+                <ChevronDown size={13} />
+              </button>
+            }
+            align="right"
+          >
+            <DropdownHeader>Configuration</DropdownHeader>
+            <DropdownItem
+              icon={<Sliders size={15} />}
+              title={initialMode === 'attendance' ? 'Manage Attendance Dates' : 'Manage Activities & Attendance'}
+              subtitle="Configure HPS, dates, exams & columns"
+              onClick={() => { setConfigTab('activities'); setConfigOpen(true); }}
+            />
+            {initialMode !== 'attendance' && (
+              <DropdownItem
+                icon={<Eye size={15} />}
+                title="Class Settings & Visibility"
+                subtitle="Release final grades & toggle student views"
+                onClick={() => { setConfigTab('visibility'); setConfigOpen(true); }}
+              />
+            )}
+          </DropdownMenu>
+
+          {/* Save Button with Unsaved Changes Badge */}
+          {Object.keys(changes).length > 0 && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm save-changes-btn"
+              onClick={saveAllChanges}
+              disabled={saving}
+            >
+              {saving ? <LoadingSpinner size="sm" /> : <Save size={14} />}
+              <span>Save All</span>
+              <span className="save-badge">{Object.keys(changes).length}</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      <Modal open={manageColsOpen} onClose={() => setManageColsOpen(false)} title={initialMode === 'attendance' ? 'Manage Attendance' : 'Manage Activities & Attendance'} size="lg">
-        <ManageColumnsModal classInfo={classInfo} isTermLocked={isTermLocked} onClose={() => setManageColsOpen(false)} onSaved={() => { setManageColsOpen(false); setLoading(true); loadClassData().finally(() => setLoading(false)); }} initialMode={initialMode} />
-      </Modal>
-      <Modal open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Class Settings" size="md">
-        <ClassSettingsModal classInfo={classInfo} settings={classSettings} onClose={() => setSettingsOpen(false)} onSaved={() => { loadClassData(); }} />
+      {/* Unified Class Settings Modal */}
+      <Modal
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        title={`Class Settings — ${classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}`}
+        size="lg"
+      >
+        <ClassConfigModal
+          classInfo={classInfo}
+          isTermLocked={isTermLocked}
+          settings={classSettings}
+          initialTab={configTab}
+          onClose={() => setConfigOpen(false)}
+          onSaved={() => {
+            setLoading(true);
+            loadClassData().finally(() => setLoading(false));
+          }}
+          initialMode={initialMode}
+        />
       </Modal>
 
       {loading ? <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}><LoadingSpinner size="lg" /></div> : (
@@ -988,9 +1159,11 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
 
 // ─── Class Detail Page ────────────────────────────────────────────────────────
 function ClassDetailPage({ classInfo, onBack }) {
-    const [classData, setClassData] = useState(null);
+  const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('visibility');
   const [activeView, setActiveView] = useState('Grades');
   const [search, setSearch] = useState('');
   const [activeAttTerm, setActiveAttTerm] = useState('Term 1');
@@ -1047,53 +1220,125 @@ function ClassDetailPage({ classInfo, onBack }) {
 
   return (
     <div className="page-content fade-in">
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
-        <button className="btn btn-ghost btn-sm" onClick={onBack}>← Back</button>
-        <h2 style={{ fontWeight: 800 }}>{classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}</h2>
-        <span className="badge badge-brand">{classInfo.section}</span>
-      </div>
+      {/* Redesigned Class Header Bar */}
+      <div className="class-header-bar no-print">
+        <div className="class-header-info">
+          <button className="btn btn-ghost btn-sm back-pill-btn" onClick={onBack}>
+            ← Back
+          </button>
+          <div className="class-title-group">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <h2 className="class-title">{classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}</h2>
+              <span className="badge badge-brand">{classInfo.section}</span>
+            </div>
+            <p className="class-subtitle">
+              {students.length} Students Enrolled • {classInfo.fileName}
+            </p>
+          </div>
+        </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <button className="btn btn-primary btn-sm no-print" onClick={() => setEditMode(true)}>
-          <Edit3 size={14} /> {activeView === "Attendance" ? "Edit Attendance" : "Edit Grades"}
-        </button>
-        <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
-          🖨️ Print (Browser)
-        </button>
-        <button className="btn btn-secondary btn-sm no-print" onClick={handleDownload}>
-          <Download size={14} /> Export Template (Excel)
-        </button>
-        <label className="btn btn-secondary btn-sm no-print" style={{ cursor: 'pointer', position: 'relative' }}>
-          <Upload size={14} /> Re-upload
-          <input type="file" accept=".xlsx" style={{ display: 'none', position: 'absolute' }} onChange={e => { const f = e.target.files[0]; if (f) handleReupload(f); }} />
-        </label>
+        {/* Grouped Header Actions */}
+        <div className="class-header-actions">
+          {/* Primary CTA */}
+          <button className="btn btn-primary btn-sm btn-hero-cta" onClick={() => setEditMode(true)}>
+            <Edit3 size={15} />
+            <span>{activeView === "Attendance" ? "Edit Attendance" : "Edit Grades"}</span>
+          </button>
+
+          {/* Quick Settings Action */}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => { setSettingsTab('visibility'); setSettingsOpen(true); }}
+            title="Class Settings & Activities"
+          >
+            <Settings size={14} />
+            <span>Settings</span>
+          </button>
+
+          {/* Export & Actions Dropdown */}
+          <DropdownMenu
+            trigger={
+              <button type="button" className="btn btn-secondary btn-sm">
+                <Download size={14} />
+                <span>Export & Tools</span>
+                <ChevronDown size={13} />
+              </button>
+            }
+            align="right"
+          >
+            <DropdownHeader>Output & Reports</DropdownHeader>
+            <DropdownItem
+              icon={<Printer size={15} />}
+              title="Print Class Record"
+              subtitle="Open browser print preview dialog"
+              onClick={() => window.print()}
+            />
+            <DropdownItem
+              icon={<FileSpreadsheet size={15} />}
+              title="Export Excel Template"
+              subtitle="Download .xlsx template with formulas"
+              onClick={handleDownload}
+            />
+            <DropdownDivider />
+            <DropdownHeader>Spreadsheet Sync</DropdownHeader>
+            <label className="dropdown-item-label" style={{ cursor: 'pointer' }}>
+              <div className="dropdown-item-icon"><Upload size={15} /></div>
+              <div className="dropdown-item-content">
+                <div className="dropdown-item-title">Re-upload Grades</div>
+                <div className="dropdown-item-sub">Upload updated .xlsx spreadsheet</div>
+              </div>
+              <input
+                type="file"
+                accept=".xlsx"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const f = e.target.files[0];
+                  if (f) handleReupload(f);
+                }}
+              />
+            </label>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <h3 style={{ fontSize: '1rem', margin: 0 }}>Student {activeView} — {students.length} students</h3>
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Student {activeView}</h3>
+            <span className="badge badge-neutral" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{students.length} students</span>
+          </div>
           
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div className="tabs" style={{ background: 'var(--brand-50)', padding: 4, borderRadius: 8 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="segmented-control">
               <button 
-                className={`tab-btn ${activeView === 'Grades' ? 'active' : ''}`}
+                type="button"
+                className={`segmented-btn ${activeView === 'Grades' ? 'active' : ''}`}
                 onClick={() => setActiveView('Grades')}
-                style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: activeView === 'Grades' ? 'white' : 'transparent', boxShadow: activeView === 'Grades' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: activeView === 'Grades' ? 600 : 500, color: activeView === 'Grades' ? 'var(--brand-600)' : 'var(--text-muted)' }}
               >
                 Grades
               </button>
               <button 
-                className={`tab-btn ${activeView === 'Attendance' ? 'active' : ''}`}
+                type="button"
+                className={`segmented-btn ${activeView === 'Attendance' ? 'active' : ''}`}
                 onClick={() => setActiveView('Attendance')}
-                style={{ padding: '6px 16px', borderRadius: 6, border: 'none', background: activeView === 'Attendance' ? 'white' : 'transparent', boxShadow: activeView === 'Attendance' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontWeight: activeView === 'Attendance' ? 600 : 500, color: activeView === 'Attendance' ? 'var(--brand-600)' : 'var(--text-muted)' }}
               >
                 Attendance
               </button>
             </div>
 
-            <div className="search-wrapper" style={{ margin: 0 }}>
+            <div className="search-wrapper" style={{ margin: 0, minWidth: 200 }}>
               <Search size={14} className="search-icon" />
-              <input type="text" className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input type="text" className="search-input" placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1230,6 +1475,28 @@ function ClassDetailPage({ classInfo, onBack }) {
       {/* Edit Modal */}
       <Modal open={editMode} onClose={handleCloseEditMode} title={`Edit ${activeView === "Attendance" ? "Attendance" : "Grades"} — ${classInfo.subject || classInfo.fileName}`} size="xl">
         <GradeEditModal classInfo={classInfo} onClose={handleCloseEditMode} initialMode={activeView === "Attendance" ? "attendance" : "table"} />
+      </Modal>
+
+      {/* Class Settings Modal from Detail View */}
+      <Modal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={`Class Settings — ${classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}`}
+        size="lg"
+      >
+        <ClassConfigModal
+          classInfo={classInfo}
+          isTermLocked={() => false}
+          settings={classData?.settings || {}}
+          initialTab={settingsTab}
+          onClose={() => setSettingsOpen(false)}
+          onSaved={() => {
+            api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}`)
+              .then(r => setClassData(r.data))
+              .catch(() => {});
+          }}
+          initialMode={activeView === 'Attendance' ? 'attendance' : 'table'}
+        />
       </Modal>
     </div>
   );

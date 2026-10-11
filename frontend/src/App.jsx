@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
+import { Shield, RotateCcw } from 'lucide-react';
 import './index.css';
 
 import LoginPage from './pages/LoginPage';
@@ -57,16 +58,58 @@ function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [impersonateInfo, setImpersonateInfo] = useState(() => {
+    try {
+      const stored = localStorage.getItem('admin_impersonate_data');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  });
+  const [isImpersonating, setIsImpersonating] = useState(() => !!localStorage.getItem('admin_return_token'));
 
   const loadFromStorage = useCallback(async () => {
     const token = localStorage.getItem('gp_token');
-    if (!token) { setLoading(false); return; }
+    const returnToken = localStorage.getItem('admin_return_token');
+    if (!token) {
+      if (returnToken) {
+        localStorage.removeItem('admin_return_token');
+        localStorage.removeItem('admin_impersonate_data');
+        setIsImpersonating(false);
+        setImpersonateInfo(null);
+      }
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/auth/me');
       setUser(res.data.user);
       setRole(res.data.role);
+      const isImp = !!localStorage.getItem('admin_return_token');
+      setIsImpersonating(isImp);
+      if (isImp) {
+        const stored = localStorage.getItem('admin_impersonate_data');
+        if (stored) {
+          try { setImpersonateInfo(JSON.parse(stored)); } catch {}
+        }
+      }
     } catch {
-      localStorage.removeItem('gp_token');
+      if (returnToken) {
+        localStorage.setItem('gp_token', returnToken);
+        localStorage.removeItem('admin_return_token');
+        localStorage.removeItem('admin_impersonate_data');
+        setIsImpersonating(false);
+        setImpersonateInfo(null);
+        try {
+          const adminRes = await api.get('/auth/me');
+          setUser(adminRes.data.user);
+          setRole(adminRes.data.role);
+          setLoading(false);
+          return;
+        } catch {
+          localStorage.removeItem('gp_token');
+        }
+      } else {
+        localStorage.removeItem('gp_token');
+      }
     } finally {
       setLoading(false);
     }
@@ -80,43 +123,104 @@ function AuthProvider({ children }) {
     setRole(roleStr);
   }, []);
 
-  const logout = useCallback(async () => {
+  const startImpersonation = useCallback((impersonateToken, userObj, targetRole, metadata = {}) => {
+    const currentAdminToken = localStorage.getItem('gp_token');
+    if (currentAdminToken) {
+      localStorage.setItem('admin_return_token', currentAdminToken);
+    }
+    const info = {
+      role: targetRole,
+      id: userObj.id,
+      name: userObj.name || metadata.name || userObj.id,
+      details: metadata.department || metadata.section || '',
+      returnPath: window.location.pathname.startsWith('/admin') ? window.location.pathname : '/admin',
+      startedAt: new Date().toISOString()
+    };
+    localStorage.setItem('admin_impersonate_data', JSON.stringify(info));
+    localStorage.setItem('gp_token', impersonateToken);
+    setUser(userObj);
+    setRole(targetRole);
+    setIsImpersonating(true);
+    setImpersonateInfo(info);
+  }, []);
+
+  const exitImpersonation = useCallback(async () => {
     const returnToken = localStorage.getItem('admin_return_token');
-    if (returnToken) {
-      localStorage.setItem('gp_token', returnToken);
-      localStorage.removeItem('admin_return_token');
-      window.location.href = '/admin';
-      return;
+    const storedInfo = localStorage.getItem('admin_impersonate_data');
+    let returnPath = '/admin';
+    if (storedInfo) {
+      try {
+        const parsed = JSON.parse(storedInfo);
+        if (parsed.returnPath && parsed.returnPath.startsWith('/admin')) {
+          returnPath = parsed.returnPath;
+        }
+      } catch {}
     }
 
+    try {
+      await api.post('/admin/impersonate/revert', { adminToken: returnToken });
+    } catch {}
+
+    if (returnToken) {
+      localStorage.setItem('gp_token', returnToken);
+    }
+    localStorage.removeItem('admin_return_token');
+    localStorage.removeItem('admin_impersonate_data');
+    setIsImpersonating(false);
+    setImpersonateInfo(null);
+
+    try {
+      const res = await api.get('/auth/me');
+      setUser(res.data.user);
+      setRole(res.data.role);
+      toast.success('Exited impersonation mode. Returned to Admin.');
+      window.location.href = returnPath;
+    } catch {
+      window.location.href = '/login';
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
     try { await api.post('/auth/logout'); } catch {}
     localStorage.removeItem('gp_token');
-    localStorage.removeItem('admin_return_token'); // Just to be safe
+    localStorage.removeItem('admin_return_token');
+    localStorage.removeItem('admin_impersonate_data');
     setUser(null);
     setRole(null);
+    setIsImpersonating(false);
+    setImpersonateInfo(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout, refresh: loadFromStorage }}>
+    <AuthContext.Provider value={{
+      user,
+      role,
+      loading,
+      login,
+      logout,
+      isImpersonating,
+      impersonateInfo,
+      startImpersonation,
+      exitImpersonation,
+      refresh: loadFromStorage
+    }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 function ProtectedRoute({ children, allowedRoles }) {
-  const { role, loading, user } = useAuth();
+  const { role, loading, user, isImpersonating } = useAuth();
   if (loading) return <PageLoader />;
   if (!role) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(role)) return <Navigate to="/" replace />;
-  // Check for impersonation
-  const isImpersonating = !!localStorage.getItem('admin_return_token');
 
-  // Enforce onboarding for students
+  // Enforce onboarding for normal students (impersonating admin can bypass or view dashboard)
   if (role === 'student' && user && !user.onboarded && !isImpersonating && window.location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
-  // Prevent onboarded students (or impersonators) from accessing the onboarding page
-  if (role === 'student' && user && (user.onboarded || isImpersonating) && window.location.pathname === '/onboarding') {
+  // Prevent onboarded students from accessing the onboarding page
+  if (role === 'student' && user && user.onboarded && window.location.pathname === '/onboarding') {
     return <Navigate to="/student" replace />;
   }
   
@@ -124,8 +228,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 }
 
 function RootRedirect() {
-  const { role, loading, user } = useAuth();
-  const isImpersonating = !!localStorage.getItem('admin_return_token');
+  const { role, loading, user, isImpersonating } = useAuth();
   
   if (loading) return <PageLoader />;
   if (!role) return <Navigate to="/login" replace />;
@@ -156,25 +259,90 @@ function PageLoader() {
 }
 
 function ImpersonationBanner() {
-  const { role } = useAuth(); // consume context to force re-render
-  const returnToken = localStorage.getItem('admin_return_token');
-  if (!returnToken) return null;
-  
+  const { isImpersonating, impersonateInfo, exitImpersonation } = useAuth();
+  const [exiting, setExiting] = useState(false);
+
+  useEffect(() => {
+    if (!isImpersonating) return;
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      if (document.querySelector('.modal-overlay')) return;
+      if (e.key === 'Escape') {
+        handleExit();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isImpersonating, exitImpersonation]);
+
+  if (!isImpersonating) return null;
+
+  const handleExit = async () => {
+    if (exiting) return;
+    setExiting(true);
+    await exitImpersonation();
+    setExiting(false);
+  };
+
+  const roleLabel = impersonateInfo?.role === 'teacher' ? 'Teacher' : 'Student';
+  const roleBadgeStyle = impersonateInfo?.role === 'teacher' 
+    ? { background: 'rgba(16, 185, 129, 0.25)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.4)' }
+    : { background: 'rgba(56, 189, 248, 0.25)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)' };
+
   return (
-    <div style={{ background: 'var(--brand-600)', color: 'white', padding: '10px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, zIndex: 9999, position: 'relative', fontWeight: 500, fontSize: '0.875rem' }}>
-      <span>You are currently impersonating a user.</span>
-      <button 
-        style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}
-        onClick={() => {
-          localStorage.setItem('gp_token', returnToken);
-          localStorage.removeItem('admin_return_token');
-          window.location.href = '/admin';
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-      >
-        Return to Admin
-      </button>
+    <div className="admin-impersonation-banner" role="alert" aria-live="polite">
+      <div className="impersonation-banner-inner">
+        <div className="impersonation-banner-left">
+          <div className="impersonation-pulse-indicator" title="Active live impersonation session">
+            <span className="pulse-dot" />
+            <span className="pulse-ring" />
+          </div>
+          <span className="impersonation-role-badge" style={roleBadgeStyle}>
+            {roleLabel}
+          </span>
+          <div className="impersonation-info-text">
+            <span className="impersonation-heading">Viewing as:</span>
+            <span className="impersonation-user-name">{impersonateInfo?.name || 'User'}</span>
+            {impersonateInfo?.id && (
+              <span className="impersonation-user-id">{impersonateInfo.id}</span>
+            )}
+            {impersonateInfo?.details && (
+              <span className="impersonation-user-details">• {impersonateInfo.details}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="impersonation-banner-center">
+          <span className="impersonation-badge-security">
+            <Shield size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+            Admin Impersonation Mode Active
+          </span>
+        </div>
+
+        <div className="impersonation-banner-right">
+          <button
+            className="btn-return-admin"
+            onClick={handleExit}
+            disabled={exiting}
+            title="Exit impersonation and return to Admin panel (Shortcut: Esc)"
+          >
+            {exiting ? (
+              <>
+                <svg className="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 14, height: 14 }}>
+                  <circle cx="12" cy="12" r="10" strokeDasharray="31.4" strokeDashoffset="10" />
+                </svg>
+                <span>Returning...</span>
+              </>
+            ) : (
+              <>
+                <RotateCcw size={13} className="return-icon" />
+                <span>Return to Admin</span>
+                <kbd className="esc-key-badge">Esc</kbd>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,181 @@
 [
   {
+    "id": "e02cdb39-e5c2-4dc0-a2c6-b90c1d443316",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T22:58:02.892Z"
+  },
+  {
+    "id": "37e89492-43d4-418b-86d1-82d419d765c3",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of teacher JOHN MARQ E. RAMOS",
+    "timestamp": "2026-10-10T22:57:48.994Z"
+  },
+  {
+    "id": "c9ea0791-9153-429e-9ac2-d4c800cb5435",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher JOHN MARQ E. RAMOS (sirmarkyu)",
+    "timestamp": "2026-10-10T22:56:48.059Z"
+  },
+  {
+    "id": "a0a4d019-8b28-4c10-b6ba-61a8a1c13551",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of teacher JOHN MARQ E. RAMOS",
+    "timestamp": "2026-10-10T22:56:34.413Z"
+  },
+  {
+    "id": "592e3e1b-b762-43a7-b105-2faeec95adcc",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher JOHN MARQ E. RAMOS (sirmarkyu)",
+    "timestamp": "2026-10-10T22:52:54.009Z"
+  },
+  {
+    "id": "7f9b1ef8-4f12-4451-929f-822b52f1f90a",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T22:52:45.504Z"
+  },
+  {
+    "id": "b4fa27d5-a4f7-46cb-a419-ea0db880a02a",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T22:42:51.783Z"
+  },
+  {
+    "id": "78b2a06f-35bc-4a25-8730-93a6feca63b3",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T22:37:29.776Z"
+  },
+  {
+    "id": "545c2207-82db-45a6-a9d0-e320027055cc",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of student ALEGRE, JEOFERSON",
+    "timestamp": "2026-10-10T16:44:04.793Z"
+  },
+  {
+    "id": "e356f1bb-6778-450c-bb7e-cf62917bc55b",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student ALEGRE, JEOFERSON (02000503190)",
+    "timestamp": "2026-10-10T16:43:39.359Z"
+  },
+  {
+    "id": "53e91c1d-2c9b-41c5-a6fb-b23a01956e89",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T16:43:21.610Z"
+  },
+  {
+    "id": "230dc3e7-4f30-4390-871d-b585f335455a",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-10T15:53:12.028Z"
+  },
+  {
+    "id": "9f55b38e-98f7-49a0-8480-62204006ba98",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of teacher JOHN MARQ E. RAMOS",
+    "timestamp": "2026-10-10T15:52:55.907Z"
+  },
+  {
+    "id": "1840d39e-f5ea-4638-8876-c949d1695d8f",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher JOHN MARQ E. RAMOS (sirmarkyu)",
+    "timestamp": "2026-10-10T15:52:17.185Z"
+  },
+  {
+    "id": "21803894-4da7-4efc-9e14-59edf3f6b6f0",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T15:51:59.465Z"
+  },
+  {
+    "id": "88daec3f-e648-47ae-ae94-acf09f9f2fdb",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T15:50:18.590Z"
+  },
+  {
+    "id": "03ea5f95-a7fc-40b5-9ad4-e416e0029874",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T15:46:44.825Z"
+  },
+  {
+    "id": "80fe1c70-a0d1-44b6-a37c-efa4cfe534e2",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T15:46:44.813Z"
+  },
+  {
+    "id": "60d77289-323f-442c-843e-addfa80f438e",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of student ALEGRE, JEOFERSON",
+    "timestamp": "2026-10-10T15:41:24.284Z"
+  },
+  {
+    "id": "23acff1e-5b3f-4373-9c97-1b92d163d818",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student ALEGRE, JEOFERSON (02000503190)",
+    "timestamp": "2026-10-10T15:41:24.273Z"
+  },
+  {
+    "id": "14349407-7ac6-4781-b73e-f4695c3e4aff",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher JOHN MARQ E. RAMOS (sirmarkyu)",
+    "timestamp": "2026-10-10T15:41:24.248Z"
+  },
+  {
+    "id": "0be50dbe-683f-4cbe-a8cf-e921688f346b",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-10T15:41:24.232Z"
+  },
+  {
     "id": "5569f1b9-145e-46e1-b4ff-9d7486e0003d",
     "userId": "admin",
     "role": "admin",
