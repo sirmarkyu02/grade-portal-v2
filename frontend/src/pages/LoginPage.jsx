@@ -85,12 +85,17 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 24, opacity: 0.6, fontSize: '0.8125rem' }}>
-            <span>Student Portal</span>
-            <span>•</span>
-            <span>Teacher Dashboard</span>
-            <span>•</span>
-            <span>Admin Panel</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, opacity: 0.85, fontSize: '0.8125rem' }}>
+            <div style={{ display: 'flex', gap: 20 }}>
+              <span>Student Portal</span>
+              <span>•</span>
+              <span>Teacher Dashboard</span>
+              <span>•</span>
+              <span>Admin Panel</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>
+              Developed by <strong style={{ color: 'white', fontWeight: 600 }}>Sir Markyu</strong>
+            </div>
           </div>
         </div>
       </div>
@@ -170,7 +175,7 @@ export default function LoginPage() {
           </div>
 
           <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 24 }}>
-            Grade Portal v2 &nbsp;•&nbsp; Powered by Excel Integration
+            Grade Portal v2 &nbsp;•&nbsp; Developed by <span style={{ fontWeight: 600, color: 'var(--brand-600)' }}>Sir Markyu</span>
           </p>
         </div>
       </div>

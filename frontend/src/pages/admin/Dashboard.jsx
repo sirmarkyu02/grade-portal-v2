@@ -500,6 +500,12 @@ function SettingsPage() {
                 {saving ? <><LoadingSpinner /> Saving...</> : 'Save General Settings'}
               </button>
             </div>
+            <div className="card-footer" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-panel)', padding: '12px 20px', borderRadius: '0 0 var(--radius) var(--radius)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Grade Portal v2.0 • Academic Records Engine</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Developed by <strong style={{ color: 'var(--brand-600)' }}>Sir Markyu</strong></span>
+              </div>
+            </div>
           </div>
         )}
 

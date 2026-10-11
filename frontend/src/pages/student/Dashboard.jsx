@@ -594,6 +594,20 @@ function SettingsPage({ user, onRefresh }) {
           </div>
         </div>
       )}
+
+      <div className="card fade-in" style={{ maxWidth: 600, marginTop: 20 }}>
+        <div className="card-header"><h3 style={{ fontSize: '1rem' }}>System Information</h3></div>
+        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>System Version</span>
+            <span style={{ fontWeight: 600 }}>Grade Portal v2.0</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Developer</span>
+            <span style={{ fontWeight: 700, color: 'var(--brand-600)' }}>Developed by Sir Markyu</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

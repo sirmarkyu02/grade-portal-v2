@@ -574,7 +574,7 @@ app.get('/api/auth/me', requireAuth(), (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 app.get('/api/settings/public', (req, res) => {
   const { adminPassword, ...safe } = settingsConfig;
-  res.json(safe);
+  res.json({ ...safe, developer: 'Sir Markyu' });
 });
 
 app.get('/api/settings', requireAuth(['admin']), (req, res) => {
@@ -1435,7 +1435,7 @@ app.post('/api/admin/sync', requireAuth(['admin']), (req, res) => {
 
 // ─── System Status ───────────────────────────────────────────────────────────
 app.get('/api/status', (req, res) => {
-  res.json({ ok: true, lastSync, totalStudents: Object.keys(studentsMap).length, filesLoaded: fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')).length });
+  res.json({ ok: true, version: '2.0.0', developer: 'Sir Markyu', lastSync, totalStudents: Object.keys(studentsMap).length, filesLoaded: fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')).length });
 });
 
 // --- Admin Features: Backup, Logs, Sessions, Impersonate ---

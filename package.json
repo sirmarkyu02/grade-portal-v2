@@ -1,7 +1,8 @@
 {
   "name": "grade-portal-v2-backend",
   "version": "2.0.0",
-  "description": "Grade Portal v2 Backend API",
+  "description": "Grade Portal v2 - Developed by Sir Markyu",
+  "author": "Sir Markyu",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

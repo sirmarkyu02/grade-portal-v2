@@ -93,6 +93,9 @@ export function AppLayout({ children, navItems, role }) {
             <LogOut size={18} className="nav-icon" />
             <span>Sign Out</span>
           </button>
+          <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+            Developed by <span style={{ fontWeight: 700, color: 'var(--brand-600)' }}>Sir Markyu</span>
+          </div>
         </div>
       </aside>
 
