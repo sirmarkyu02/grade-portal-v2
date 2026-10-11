@@ -1467,12 +1467,28 @@ app.delete('/api/admin/sessions/:token', requireAuth(['admin']), (req, res) => {
 
 app.post('/api/admin/impersonate/:role/:id', requireAuth(['admin']), (req, res) => {
   const { role, id } = req.params;
-  logActivity('admin', 'admin', 'Impersonate', `Impersonated ${role} ${id}`);
+  let targetUser = null;
   let meta = {};
-  if (role === 'teacher' && teachersConfig[id]) meta = { name: teachersConfig[id].name };
-  if (role === 'student' && studentsMap[id]) meta = { name: studentsMap[id].name };
-  const token = createSession(id, role, meta);
-  res.json({ success: true, token });
+  if (role === 'teacher') {
+    targetUser = teachersConfig[id];
+    if (targetUser) meta = { name: targetUser.name };
+  } else if (role === 'student') {
+    targetUser = studentsMap[id] || studentsMap['0' + id] || studentsMap[id.replace(/^0+/, '')];
+    if (targetUser) meta = { name: targetUser.name };
+  }
+  const targetId = targetUser?.studentNo || targetUser?.username || id;
+  logActivity('admin', 'admin', 'Impersonate', `Impersonated ${role} ${targetId}`);
+  const token = createSession(targetId, role, meta);
+  res.json({ success: true, token, user: { id: targetId, name: meta.name || targetId } });
+});
+
+app.post('/api/admin/impersonate/revert', (req, res) => {
+  const token = req.headers['authorization']?.replace('Bearer ', '');
+  if (token) {
+    destroySession(token);
+  }
+  logActivity('admin', 'admin', 'Revert Impersonation', 'Exited impersonation mode and returned to Admin');
+  res.json({ success: true });
 });
 
 app.get('/api/admin/users', requireAuth(['admin']), (req, res) => {

@@ -129,7 +129,7 @@ function OverviewPage() {
 
 // ─── Teachers Management ───────────────────────────────────────────────────────
 function TeachersPage() {
-  const { login } = useAuth();
+  const { startImpersonation } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // 'add' | 'edit' | 'classes'
@@ -169,9 +169,8 @@ function TeachersPage() {
   const handleImpersonate = async (t) => {
     try {
       const res = await api.post(`/admin/impersonate/teacher/${t.username}`);
-      toast.success('Impersonating teacher');
-      localStorage.setItem('admin_return_token', localStorage.getItem('gp_token'));
-      login(res.data.token, { id: t.username, name: t.name, department: t.department }, 'teacher');
+      toast.success(`Impersonating teacher ${t.name}`);
+      startImpersonation(res.data.token, { id: t.username, name: t.name, department: t.department }, 'teacher', { department: t.department });
     } catch { toast.error('Impersonation failed'); }
   };
 
@@ -681,7 +680,7 @@ function SettingsPage() {
 }
 
 function StudentsOverview() {
-  const { login } = useAuth();
+  const { startImpersonation } = useAuth();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -707,9 +706,8 @@ function StudentsOverview() {
   const handleImpersonate = async (s) => {
     try {
       const res = await api.post(`/admin/impersonate/student/${s.studentNo}`);
-      toast.success('Impersonating student');
-      localStorage.setItem('admin_return_token', localStorage.getItem('gp_token'));
-      login(res.data.token, { id: s.studentNo, name: s.name }, 'student');
+      toast.success(`Impersonating student ${s.name}`);
+      startImpersonation(res.data.token, { id: s.studentNo, name: s.name, onboarded: true }, 'student', { section: s.section || '' });
     } catch { toast.error('Impersonation failed'); }
   };
 
@@ -801,6 +799,15 @@ function StudentsOverview() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={14} /> {details.student.subjects.length} Subjects</span>
                 </div>
               </div>
+              <button 
+                className="btn btn-primary btn-sm"
+                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}
+                onClick={() => handleImpersonate({ studentNo: details.student.studentNo, name: details.student.name, section: details.student.subjects?.[0]?.info?.section })}
+                title="Impersonate and view portal as this student"
+              >
+                <UserCheck size={14} />
+                <span>Impersonate Student</span>
+              </button>
             </div>
 
             <div className="grid-2">

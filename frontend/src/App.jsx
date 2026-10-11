@@ -81,9 +81,10 @@ function AuthProvider({ children }) {
     }
     try {
       const res = await api.get('/auth/me');
-      setUser(res.data.user);
-      setRole(res.data.role);
       const isImp = !!localStorage.getItem('admin_return_token');
+      const userData = (isImp && res.data.role === 'student') ? { ...res.data.user, onboarded: true } : res.data.user;
+      setUser(userData);
+      setRole(res.data.role);
       setIsImpersonating(isImp);
       if (isImp) {
         const stored = localStorage.getItem('admin_impersonate_data');
@@ -138,10 +139,11 @@ function AuthProvider({ children }) {
     };
     localStorage.setItem('admin_impersonate_data', JSON.stringify(info));
     localStorage.setItem('gp_token', impersonateToken);
-    setUser(userObj);
+    setUser({ ...userObj, onboarded: true });
     setRole(targetRole);
     setIsImpersonating(true);
     setImpersonateInfo(info);
+    window.location.href = targetRole === 'teacher' ? '/teacher' : '/student';
   }, []);
 
   const exitImpersonation = useCallback(async () => {
@@ -215,12 +217,12 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (!role) return <Navigate to="/login" replace />;
   if (allowedRoles && !allowedRoles.includes(role)) return <Navigate to="/" replace />;
 
-  // Enforce onboarding for normal students (impersonating admin can bypass or view dashboard)
+  // Enforce onboarding for normal students (impersonating admin always bypasses onboarding)
   if (role === 'student' && user && !user.onboarded && !isImpersonating && window.location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
-  // Prevent onboarded students from accessing the onboarding page
-  if (role === 'student' && user && user.onboarded && window.location.pathname === '/onboarding') {
+  // Prevent onboarded students and impersonating admins from accessing the onboarding page
+  if (role === 'student' && (user?.onboarded || isImpersonating) && window.location.pathname === '/onboarding') {
     return <Navigate to="/student" replace />;
   }
   

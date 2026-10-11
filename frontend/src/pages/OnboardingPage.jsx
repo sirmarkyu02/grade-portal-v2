@@ -1,18 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, User, Phone, MapPin, Lock, Check, ArrowRight, GraduationCap } from 'lucide-react';
+import { Camera, User, Phone, MapPin, Lock, Check, ArrowRight, GraduationCap, RotateCcw } from 'lucide-react';
 import { useAuth } from '../App';
 import api from '../api';
 import toast from 'react-hot-toast';
 
 export default function OnboardingPage() {
-  const { user, refresh, logout } = useAuth();
+  const { user, refresh, logout, isImpersonating, exitImpersonation } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const fileRef = useRef();
+
+  useEffect(() => {
+    if (isImpersonating) {
+      navigate('/student', { replace: true });
+    }
+  }, [isImpersonating, navigate]);
 
   const [form, setForm] = useState({
     newPassword: '',
@@ -90,14 +96,27 @@ export default function OnboardingPage() {
       <div className="card" style={{ maxWidth: 560, width: '100%', borderRadius: 24, overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ background: 'var(--grad-hero)', padding: '32px 32px 24px', color: 'white', position: 'relative' }}>
-          <button 
-            onClick={logout} 
-            style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(10px)', transition: 'all 0.2s' }} 
-            onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.25)'; e.currentTarget.style.transform = 'translateY(-1px)'; }} 
-            onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'none'; }}
-          >
-            Log Out
-          </button>
+          {isImpersonating ? (
+            <button 
+              onClick={exitImpersonation} 
+              style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', color: 'white', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(10px)', transition: 'all 0.2s' }} 
+              onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; e.currentTarget.style.transform = 'translateY(-1px)'; }} 
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.transform = 'none'; }}
+              title="Return to Administrator Dashboard"
+            >
+              <RotateCcw size={13} />
+              Return to Admin
+            </button>
+          ) : (
+            <button 
+              onClick={logout} 
+              style={{ position: 'absolute', top: 24, right: 24, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, backdropFilter: 'blur(10px)', transition: 'all 0.2s' }} 
+              onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.25)'; e.currentTarget.style.transform = 'translateY(-1px)'; }} 
+              onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.transform = 'none'; }}
+            >
+              Log Out
+            </button>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
             <div style={{ width: 40, height: 40, background: 'rgba(255,255,255,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

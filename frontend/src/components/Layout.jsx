@@ -78,7 +78,7 @@ export function AppLayout({ children, navItems, role }) {
         </nav>
 
         <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {isImpersonating && (
+          {isImpersonating ? (
             <button
               onClick={exitImpersonation}
               className="nav-item"
@@ -88,11 +88,12 @@ export function AppLayout({ children, navItems, role }) {
               <RotateCcw size={16} className="nav-icon" />
               <span>Return to Admin</span>
             </button>
+          ) : (
+            <button onClick={handleLogout} className="nav-item" style={{ color: 'var(--color-error)', width: '100%' }}>
+              <LogOut size={18} className="nav-icon" />
+              <span>Sign Out</span>
+            </button>
           )}
-          <button onClick={handleLogout} className="nav-item" style={{ color: 'var(--color-error)', width: '100%' }}>
-            <LogOut size={18} className="nav-icon" />
-            <span>Sign Out</span>
-          </button>
           <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
             Developed by <span style={{ fontWeight: 700, color: 'var(--brand-600)' }}>Sir Markyu</span>
           </div>
