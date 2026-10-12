@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award, Printer, FileSpreadsheet, ChevronDown, Sliders } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award, Printer, FileSpreadsheet, ChevronDown, Sliders, Cloud, CloudUpload, CheckCircle2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, DropdownMenu, DropdownItem, DropdownDivider, DropdownHeader } from '../../components/Layout';
 import { useAuth } from '../../App';
 import api from '../../api';
@@ -30,6 +30,11 @@ function ClassListPage({ onSelectClass }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState(null);
+  const [cloudChecking, setCloudChecking] = useState(false);
+  const [syncAllModalOpen, setSyncAllModalOpen] = useState(false);
+  const [syncAllAuthorized, setSyncAllAuthorized] = useState(false);
+  const [syncingAll, setSyncingAll] = useState(false);
 
   const loadClasses = async () => {
     try {
@@ -39,7 +44,22 @@ function ClassListPage({ onSelectClass }) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadClasses(); }, []);
+  const checkCloudStatus = async () => {
+    setCloudChecking(true);
+    try {
+      const res = await api.get('/sync/status');
+      setCloudStatus(res.data);
+    } catch {
+      setCloudStatus({ online: false, error: 'Could not reach server' });
+    } finally {
+      setCloudChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClasses();
+    checkCloudStatus();
+  }, []);
 
   const handleUpload = async (file) => {
     setUploadLoading(true);
@@ -54,6 +74,22 @@ function ClassListPage({ onSelectClass }) {
     } finally { setUploadLoading(false); }
   };
 
+  const handleSyncAllClasses = async () => {
+    if (!syncAllAuthorized) return;
+    setSyncingAll(true);
+    try {
+      const res = await api.post('/sync/push-to-cloud', {});
+      toast.success(res.data.message || 'All classes synchronized to AWS Cloud!');
+      setSyncAllModalOpen(false);
+      setSyncAllAuthorized(false);
+      checkCloudStatus();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to sync with AWS Cloud.');
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
 
   return (
@@ -63,7 +99,7 @@ function ClassListPage({ onSelectClass }) {
         borderRadius: 24, 
         background: 'linear-gradient(135deg, var(--brand-600) 0%, var(--brand-400) 100%)', 
         padding: '36px 40px', 
-        marginBottom: 32, 
+        marginBottom: 24, 
         color: 'white', 
         display: 'flex', 
         alignItems: 'center', 
@@ -83,6 +119,90 @@ function ClassListPage({ onSelectClass }) {
         <div style={{ textAlign: 'right', flexShrink: 0, position: 'relative', zIndex: 1 }}>
           <div style={{ fontSize: '3.5rem', fontWeight: 900, lineHeight: 1, textShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>{classes.length}</div>
           <div style={{ opacity: 0.9, fontSize: '1rem', fontWeight: 500, marginTop: 4 }}>Active Class{classes.length !== 1 ? 'es' : ''}</div>
+        </div>
+      </div>
+
+      {/* AWS Cloud Synchronization Quick Banner */}
+      <div style={{
+        borderRadius: 16,
+        padding: '16px 20px',
+        marginBottom: 28,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 42,
+            height: 42,
+            borderRadius: 12,
+            background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: cloudStatus?.online ? '#10b981' : 'var(--text-muted)'
+          }}>
+            <Cloud size={22} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>AWS Cloud Synchronization</span>
+              <span style={{
+                fontSize: '0.725rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: 999,
+                background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                color: cloudStatus?.online ? '#059669' : '#dc2626',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5
+              }}>
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: cloudStatus?.online ? '#10b981' : '#ef4444'
+                }} />
+                {cloudChecking ? 'Checking...' : cloudStatus?.online ? 'AWS Online' : 'AWS Offline'}
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              {cloudStatus?.lastSync ? `Last synced: ${new Date(cloudStatus.lastSync).toLocaleString()}` : 'Never synchronized'}
+              {' • '}
+              <a href={cloudStatus?.cloudUrl || 'http://16.59.47.134'} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-600)', textDecoration: 'none', fontWeight: 500 }}>
+                {cloudStatus?.cloudUrl || 'http://16.59.47.134'} ↗
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={checkCloudStatus}
+            disabled={cloudChecking}
+            title="Check AWS connection status"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <RefreshCw size={13} className={cloudChecking ? 'spin' : ''} />
+            <span>Check Status</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => { setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <CloudUpload size={14} />
+            <span>Authorize & Sync to AWS</span>
+          </button>
         </div>
       </div>
 
@@ -130,6 +250,113 @@ function ClassListPage({ onSelectClass }) {
           </div>
         </div>
       </div>
+
+      {/* Sync All Classes Authorization Modal */}
+      {syncAllModalOpen && (
+        <Modal open={syncAllModalOpen} onClose={() => { if (!syncingAll) setSyncAllModalOpen(false); }} title="Authorize AWS Cloud Synchronization">
+          <div style={{ padding: '4px 0' }}>
+            <div style={{
+              padding: 16,
+              background: 'var(--brand-50)',
+              border: '1px solid var(--brand-200)',
+              borderRadius: 12,
+              marginBottom: 20,
+              display: 'flex',
+              gap: 12,
+              alignItems: 'flex-start'
+            }}>
+              <Cloud size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--brand-900)', marginBottom: 4 }}>
+                  Synchronize All Classes to AWS Cloud
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--brand-700)', lineHeight: 1.5 }}>
+                  This offline desktop app is your local authority. When authorized, all your Excel grade files and visibility settings will be securely pushed to the online AWS server (<strong>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</strong>).
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'var(--bg-input)',
+              padding: '14px 16px',
+              borderRadius: 10,
+              marginBottom: 20,
+              fontSize: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Target Server:</span>
+                <span style={{ fontWeight: 600 }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Connection Status:</span>
+                {cloudChecking ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                    <LoadingSpinner size="sm" /> Checking...
+                  </span>
+                ) : cloudStatus?.online ? (
+                  <span style={{ color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ● Online & Ready
+                  </span>
+                ) : (
+                  <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ● Offline / Unreachable
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Offline Classes to Push:</span>
+                <span style={{ fontWeight: 600 }}>{classes.length} Class Grade Sheet(s)</span>
+              </div>
+            </div>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: 14,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              cursor: 'pointer',
+              marginBottom: 24
+            }}>
+              <input
+                type="checkbox"
+                checked={syncAllAuthorized}
+                onChange={e => setSyncAllAuthorized(e.target.checked)}
+                style={{ width: 18, height: 18, marginTop: 2, cursor: 'pointer', accentColor: 'var(--brand-600)' }}
+              />
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.4 }}>
+                <strong style={{ display: 'block', color: 'var(--text-main)', marginBottom: 2 }}>
+                  I authorize pushing offline grades to the online AWS server
+                </strong>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  I understand this will update the live online records so students can see their latest published grades.
+                </span>
+              </div>
+            </label>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setSyncAllModalOpen(false)} disabled={syncingAll}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!syncAllAuthorized || syncingAll}
+                onClick={handleSyncAllClasses}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                {syncingAll ? <LoadingSpinner size="sm" /> : <CloudUpload size={16} />}
+                <span>{syncingAll ? 'Synchronizing with AWS...' : 'Authorize & Push to AWS'}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1209,6 +1436,43 @@ function ClassDetailPage({ classInfo, onBack }) {
   const [search, setSearch] = useState('');
   const [activeAttTerm, setActiveAttTerm] = useState('Term 1');
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncAuthorized, setSyncAuthorized] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState(null);
+  const [cloudChecking, setCloudChecking] = useState(false);
+
+  const checkCloudStatus = async () => {
+    setCloudChecking(true);
+    try {
+      const res = await api.get('/sync/status');
+      setCloudStatus(res.data);
+    } catch {
+      setCloudStatus({ online: false, error: 'Could not reach server' });
+    } finally {
+      setCloudChecking(false);
+    }
+  };
+
+  const openSyncModal = () => {
+    setSyncAuthorized(false);
+    setSyncModalOpen(true);
+    checkCloudStatus();
+  };
+
+  const handlePushClassToCloud = async () => {
+    if (!syncAuthorized) return;
+    setSyncing(true);
+    try {
+      const res = await api.post('/sync/push-to-cloud', { filename: classInfo.fileName });
+      toast.success(res.data.message || 'Class successfully pushed to AWS Cloud!');
+      setSyncModalOpen(false);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to push class to AWS Cloud.');
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   useEffect(() => {
     api.get(`/teacher/class/${encodeURIComponent(classInfo.fileName)}`)
@@ -1297,6 +1561,18 @@ function ClassDetailPage({ classInfo, onBack }) {
             <span>Settings</span>
           </button>
 
+          {/* Cloud Sync Action */}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={openSyncModal}
+            title="Push and synchronize this class to AWS Cloud"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <CloudUpload size={14} style={{ color: 'var(--brand-600)' }} />
+            <span>Sync to AWS</span>
+          </button>
+
           {/* Export & Actions Dropdown */}
           <DropdownMenu
             trigger={
@@ -1339,6 +1615,14 @@ function ClassDetailPage({ classInfo, onBack }) {
                 }}
               />
             </label>
+            <DropdownDivider />
+            <DropdownHeader>Cloud Integration</DropdownHeader>
+            <DropdownItem
+              icon={<CloudUpload size={15} />}
+              title="Sync Class to AWS"
+              subtitle="Push grade sheet directly to online portal"
+              onClick={openSyncModal}
+            />
           </DropdownMenu>
         </div>
       </div>
@@ -1561,6 +1845,122 @@ function ClassDetailPage({ classInfo, onBack }) {
           initialMode={activeView === 'Attendance' ? 'attendance' : 'table'}
         />
       </Modal>
+
+      {/* Cloud Sync Modal for this specific class */}
+      {syncModalOpen && (
+        <Modal
+          open={syncModalOpen}
+          onClose={() => { if (!syncing) setSyncModalOpen(false); }}
+          title="Authorize AWS Cloud Synchronization"
+          size="md"
+        >
+          <div style={{ padding: '4px 0' }}>
+            <div style={{
+              padding: 16,
+              background: 'var(--brand-50)',
+              border: '1px solid var(--brand-200)',
+              borderRadius: 12,
+              marginBottom: 20,
+              display: 'flex',
+              gap: 12,
+              alignItems: 'flex-start'
+            }}>
+              <Cloud size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--brand-900)', marginBottom: 4 }}>
+                  Synchronize "{classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}" to AWS
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--brand-700)', lineHeight: 1.5 }}>
+                  This will push your latest offline grade updates and class settings directly to the live AWS cloud portal so online students can view them immediately.
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'var(--bg-input)',
+              padding: '14px 16px',
+              borderRadius: 10,
+              marginBottom: 20,
+              fontSize: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Target AWS Portal:</span>
+                <span style={{ fontWeight: 600 }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Connection Status:</span>
+                {cloudChecking ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                    <LoadingSpinner size="sm" /> Checking AWS...
+                  </span>
+                ) : cloudStatus?.online ? (
+                  <span style={{ color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ● Online & Reachable
+                  </span>
+                ) : (
+                  <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    ● Offline / Unreachable
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Spreadsheet File:</span>
+                <span style={{ fontWeight: 600 }}>{classInfo.fileName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Enrolled Students:</span>
+                <span style={{ fontWeight: 600 }}>{students.length} Students</span>
+              </div>
+            </div>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: 14,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              cursor: 'pointer',
+              marginBottom: 24
+            }}>
+              <input
+                type="checkbox"
+                checked={syncAuthorized}
+                onChange={e => setSyncAuthorized(e.target.checked)}
+                style={{ width: 18, height: 18, marginTop: 2, cursor: 'pointer', accentColor: 'var(--brand-600)' }}
+              />
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.4 }}>
+                <strong style={{ display: 'block', color: 'var(--text-main)', marginBottom: 2 }}>
+                  I authorize pushing this class update to AWS Cloud
+                </strong>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  I confirm that these grade records are ready to be published to the online server for student access.
+                </span>
+              </div>
+            </label>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setSyncModalOpen(false)} disabled={syncing}>
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={!syncAuthorized || syncing}
+                onClick={handlePushClassToCloud}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                {syncing ? <LoadingSpinner size="sm" /> : <CloudUpload size={16} />}
+                <span>{syncing ? 'Pushing to AWS...' : 'Authorize & Push to AWS'}</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

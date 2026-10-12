@@ -1956,10 +1956,260 @@ app.get('/api/admin/statistics', requireAuth(['admin']), (req, res) => {
   res.json({ success: true, overview: { totalStudents: students.length, totalSubjects: subjectStats.length }, subjectStats });
 });
 
-// --- Admin Sync ---
+// --- Admin Local Sync ---
 app.post('/api/admin/sync', requireAuth(['admin']), (req, res) => {
   loadAllData();
   res.json({ success: true, lastSync, totalStudents: Object.keys(studentsMap).length });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CLOUD SYNCHRONIZATION SYSTEM (Offline <-> AWS Cloud)
+// ══════════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_CLOUD_URL = 'http://16.59.47.134';
+const DEFAULT_SYNC_SECRET = 'gradeportal-secure-cloud-sync-key-2026';
+
+// 1. Cloud Status Endpoint (Probed by offline app to check if AWS is online)
+app.get('/api/sync/cloud-status', (req, res) => {
+  const files = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+  res.json({
+    online: true,
+    server: 'AWS Cloud Portal',
+    version: '2.0.0',
+    totalStudents: Object.keys(studentsMap).length,
+    filesLoaded: files.length,
+    lastSync: settingsConfig.cloudSync?.lastSync || lastSync || null,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// 2. Cloud Receiving Endpoint (Receives Excel files and updates on AWS)
+app.post('/api/sync/receive-push', (req, res) => {
+  const token = req.headers['x-sync-token'];
+  const configuredSecret = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  
+  if (token !== configuredSecret) {
+    return res.status(401).json({ error: 'Unauthorized: Invalid sync authorization token.' });
+  }
+
+  const { files, classSettings, settings, sender } = req.body;
+  if (!Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ error: 'No files provided for synchronization.' });
+  }
+
+  try {
+    let savedCount = 0;
+    files.forEach(item => {
+      if (item && item.filename && item.contentBase64) {
+        const safeName = path.basename(item.filename);
+        const targetPath = path.join(GRADES_DIR, safeName);
+        fs.writeFileSync(targetPath, Buffer.from(item.contentBase64, 'base64'));
+        savedCount++;
+      }
+    });
+
+    // Merge class settings if provided
+    if (classSettings && typeof classSettings === 'object') {
+      classSettingsConfig = { ...classSettingsConfig, ...classSettings };
+      saveJSON(CLASS_SETTINGS_FILE, classSettingsConfig);
+    }
+
+    // Merge general settings (visibleTerms, termLocks, gradeRelease) if provided
+    if (settings && typeof settings === 'object') {
+      if (settings.visibleTerms) settingsConfig.visibleTerms = settings.visibleTerms;
+      if (settings.termLocks) settingsConfig.termLocks = settings.termLocks;
+      if (settings.gradeRelease) settingsConfig.gradeRelease = settings.gradeRelease;
+      saveJSON(SETTINGS_FILE, settingsConfig);
+    }
+
+    // Immediately reload all class and student data on AWS
+    loadAllData();
+
+    const syncTime = new Date().toISOString();
+    settingsConfig.cloudSync = {
+      ...(settingsConfig.cloudSync || {}),
+      lastSync: syncTime
+    };
+    saveJSON(SETTINGS_FILE, settingsConfig);
+
+    logActivity('sync', 'system', 'Cloud Sync Received', `Received & updated ${savedCount} Excel file(s) authorized by ${sender || 'Authorized User'}`);
+
+    res.json({
+      success: true,
+      message: `Successfully updated ${savedCount} Excel file(s) on AWS Cloud.`,
+      filesUpdated: savedCount,
+      totalStudents: Object.keys(studentsMap).length,
+      timestamp: syncTime
+    });
+  } catch (err) {
+    console.error('❌ Cloud sync receive error:', err);
+    res.status(500).json({ error: 'Failed to process sync files: ' + err.message });
+  }
+});
+
+// 3. Local Status & Connectivity Check (Called by frontend)
+app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) => {
+  const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
+  const localFiles = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    
+    const resp = await fetch(`${cloudUrl}/api/sync/cloud-status`, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (resp.ok) {
+      const cloudData = await resp.json();
+      return res.json({
+        online: true,
+        cloudUrl,
+        lastSync: settingsConfig.cloudSync?.lastSync || null,
+        localFilesCount: localFiles.length,
+        localFiles: localFiles,
+        cloudInfo: cloudData
+      });
+    } else {
+      return res.json({
+        online: false,
+        cloudUrl,
+        lastSync: settingsConfig.cloudSync?.lastSync || null,
+        localFilesCount: localFiles.length,
+        localFiles: localFiles,
+        error: `Cloud server returned status ${resp.status}`
+      });
+    }
+  } catch (err) {
+    return res.json({
+      online: false,
+      cloudUrl,
+      lastSync: settingsConfig.cloudSync?.lastSync || null,
+      localFilesCount: localFiles.length,
+      localFiles: localFiles,
+      error: 'Cannot reach AWS cloud server. Offline or network error.'
+    });
+  }
+});
+
+// 4. Trigger Push to AWS Cloud (Authorized by Admin or Teacher)
+app.post('/api/sync/push-to-cloud', requireAuth(['admin', 'teacher']), async (req, res) => {
+  const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
+  const secretKey = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  const specificFile = req.body?.filename;
+
+  // Step 1: Pre-flight check AWS connectivity
+  try {
+    const probeController = new AbortController();
+    const probeTimeout = setTimeout(() => probeController.abort(), 4000);
+    const probeResp = await fetch(`${cloudUrl}/api/sync/cloud-status`, { signal: probeController.signal });
+    clearTimeout(probeTimeout);
+    if (!probeResp.ok) throw new Error('Cloud server returned error');
+  } catch (probeErr) {
+    return res.status(503).json({
+      success: false,
+      offline: true,
+      error: `AWS Cloud server (${cloudUrl}) is currently unreachable. Please check your internet connection and verify the online server is active.`
+    });
+  }
+
+  // Step 2: Gather files to push
+  let filesToSync = [];
+  if (specificFile) {
+    const safeName = path.basename(specificFile);
+    if (fs.existsSync(path.join(GRADES_DIR, safeName))) {
+      filesToSync.push(safeName);
+    } else {
+      return res.status(404).json({ error: `File ${safeName} not found in Grades directory.` });
+    }
+  } else {
+    filesToSync = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+  }
+
+  if (filesToSync.length === 0) {
+    return res.status(400).json({ error: 'No Excel files found to synchronize.' });
+  }
+
+  // Step 3: Package files and settings
+  try {
+    const packagedFiles = filesToSync.map(fname => {
+      const fpath = path.join(GRADES_DIR, fname);
+      return {
+        filename: fname,
+        contentBase64: fs.readFileSync(fpath).toString('base64')
+      };
+    });
+
+    const payload = {
+      files: packagedFiles,
+      classSettings: classSettingsConfig,
+      settings: {
+        visibleTerms: settingsConfig.visibleTerms,
+        termLocks: settingsConfig.termLocks,
+        gradeRelease: settingsConfig.gradeRelease
+      },
+      sender: `${req.session.userId} (${req.session.role})`
+    };
+
+    // Step 4: Transmit payload to AWS
+    const pushResp = await fetch(`${cloudUrl}/api/sync/receive-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-sync-token': secretKey
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await pushResp.json();
+    if (!pushResp.ok || !result.success) {
+      throw new Error(result.error || 'Cloud synchronization failed on remote server.');
+    }
+
+    // Step 5: Update local lastSync metadata
+    const syncTime = new Date().toISOString();
+    settingsConfig.cloudSync = {
+      ...(settingsConfig.cloudSync || {}),
+      serverUrl: cloudUrl,
+      secretKey,
+      lastSync: syncTime
+    };
+    saveJSON(SETTINGS_FILE, settingsConfig);
+
+    logActivity(req.session.userId, req.session.role, 'Cloud Sync Push', `Pushed ${filesToSync.length} Excel file(s) to AWS Cloud (${cloudUrl})`);
+
+    res.json({
+      success: true,
+      message: `Successfully synchronized ${filesToSync.length} Excel file(s) to AWS Cloud!`,
+      filesCount: filesToSync.length,
+      cloudResult: result,
+      timestamp: syncTime
+    });
+  } catch (syncErr) {
+    console.error('❌ Cloud push error:', syncErr);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to synchronize with AWS: ' + syncErr.message
+    });
+  }
+});
+
+// 5. Configure Cloud Server URL (Admin Only)
+app.post('/api/sync/configure', requireAuth(['admin']), (req, res) => {
+  const { serverUrl, secretKey } = req.body;
+  if (!serverUrl) return res.status(400).json({ error: 'Server URL is required.' });
+
+  settingsConfig.cloudSync = {
+    ...(settingsConfig.cloudSync || {}),
+    serverUrl: serverUrl.trim().replace(/\/+$/, ''),
+    secretKey: secretKey ? secretKey.trim() : (settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET)
+  };
+  saveJSON(SETTINGS_FILE, settingsConfig);
+  logActivity('admin', 'admin', 'Configured Cloud Sync', `Updated Cloud URL to ${settingsConfig.cloudSync.serverUrl}`);
+
+  res.json({ success: true, cloudSync: settingsConfig.cloudSync });
 });
 
 // ─── System Status ───────────────────────────────────────────────────────────

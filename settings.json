@@ -31,5 +31,10 @@
   },
   "sessionTimeout": 7200000,
   "developer": "Sir Markyu",
-  "portalLogo": ""
+  "portalLogo": "",
+  "cloudSync": {
+    "serverUrl": "http://16.59.47.134",
+    "secretKey": "gradeportal-secure-cloud-sync-key-2026",
+    "lastSync": null
+  }
 }

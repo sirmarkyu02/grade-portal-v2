@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet, Cloud, CloudUpload, ExternalLink, Globe } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
 import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, ChevronDown, ChevronUp } from 'lucide-react';
@@ -13,6 +13,10 @@ function OverviewPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState({ online: false, checking: true, cloudUrl: 'http://16.59.47.134', lastSync: null, localFilesCount: 0 });
+  const [cloudSyncing, setCloudSyncing] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [authorizedConfirm, setAuthorizedConfirm] = useState(false);
 
   const loadStats = async () => {
     try {
@@ -20,6 +24,32 @@ function OverviewPage() {
       setStats({ ...statsRes.data, status: status.data });
     } catch { toast.error('Failed to load statistics.'); }
     finally { setLoading(false); }
+  };
+
+  const checkCloudStatus = async () => {
+    setCloudStatus(prev => ({ ...prev, checking: true }));
+    try {
+      const res = await api.get('/sync/status');
+      setCloudStatus({ ...res.data, checking: false });
+    } catch {
+      setCloudStatus(prev => ({ ...prev, online: false, checking: false }));
+    }
+  };
+
+  const handlePushToCloud = async () => {
+    setCloudSyncing(true);
+    try {
+      const res = await api.post('/sync/push-to-cloud');
+      toast.success(res.data?.message || 'Successfully synchronized to AWS Cloud!');
+      setSyncModalOpen(false);
+      setAuthorizedConfirm(false);
+      checkCloudStatus();
+      loadStats();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Cloud synchronization failed.');
+    } finally {
+      setCloudSyncing(false);
+    }
   };
 
   const handleDownloadBackup = async () => {
@@ -43,13 +73,16 @@ function OverviewPage() {
     setSyncing(true);
     try {
       await api.post('/admin/sync');
-      toast.success('Data synced successfully.');
+      toast.success('Local data reloaded successfully.');
       loadStats();
-    } catch { toast.error('Sync failed.'); }
+    } catch { toast.error('Local reload failed.'); }
     finally { setSyncing(false); }
   };
 
-  useEffect(() => { loadStats(); }, []);
+  useEffect(() => { 
+    loadStats(); 
+    checkCloudStatus();
+  }, []);
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
   const ov = stats?.overview || {};
@@ -61,9 +94,161 @@ function OverviewPage() {
           <HardDrive size={14} /> Download Backup
         </a>
         <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
-          {syncing ? <LoadingSpinner /> : <RefreshCw size={14} />} Sync Data
+          {syncing ? <LoadingSpinner /> : <RefreshCw size={14} />} Reload Local
         </button>
       </div>
+
+      {/* AWS Cloud Synchronization Center */}
+      <div className="cloud-sync-card fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--violet-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--violet-700)' }}>
+              <CloudUpload size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>AWS Cloud Synchronization</h3>
+                {cloudStatus.checking ? (
+                  <span className="badge badge-neutral" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <LoadingSpinner size="sm" /> Checking AWS...
+                  </span>
+                ) : cloudStatus.online ? (
+                  <span className="badge badge-success" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span className="cloud-pulse-online" /> AWS Online ({cloudStatus.cloudUrl.replace('http://', '').replace('https://', '')})
+                  </span>
+                ) : (
+                  <span className="badge badge-error" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span className="cloud-pulse-offline" /> AWS Offline / No Internet
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                Offline app integration: Authorize and push updated Excel grade records to the online AWS portal.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={checkCloudStatus} 
+              disabled={cloudStatus.checking || cloudSyncing}
+              title="Ping AWS server to verify connection"
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <RefreshCw size={13} className={cloudStatus.checking ? 'spin' : ''} />
+              <span>Check Connection</span>
+            </button>
+            <button 
+              className="btn btn-primary btn-sm" 
+              onClick={() => { setAuthorizedConfirm(false); setSyncModalOpen(true); }}
+              disabled={cloudSyncing}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <CloudUpload size={14} />
+              <span>Authorize & Sync to AWS</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Sync Info Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <div className="cloud-sync-metric">
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Offline Excel Records</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
+              {cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Files
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ready in local Grades folder</span>
+          </div>
+
+          <div className="cloud-sync-metric">
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Target Cloud Server</span>
+            <a 
+              href={cloudStatus.cloudUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--brand-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              {cloudStatus.cloudUrl.replace('http://', '').replace('https://', '')}
+              <ExternalLink size={12} />
+            </a>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Live public EC2 instance</span>
+          </div>
+
+          <div className="cloud-sync-metric">
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Online Students</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: cloudStatus.online ? '#059669' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              {cloudStatus.online && cloudStatus.cloudInfo?.totalStudents !== undefined ? `${cloudStatus.cloudInfo.totalStudents} Active` : '—'}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {cloudStatus.online ? `${cloudStatus.cloudInfo?.filesLoaded || 0} files on Cloud` : 'Connect to check'}
+            </span>
+          </div>
+
+          <div className="cloud-sync-metric">
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Last Cloud Sync</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              {cloudStatus.lastSync ? new Date(cloudStatus.lastSync).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never Synced Yet'}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Offline to AWS push</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Cloud Sync Authorization Modal */}
+      <Modal open={syncModalOpen} onClose={() => !cloudSyncing && setSyncModalOpen(false)} title="Authorize Cloud Synchronization" size="md">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ padding: '14px 18px', background: 'var(--grad-soft)', borderRadius: 12, border: '1px solid var(--violet-200)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <Shield size={18} color="var(--violet-700)" />
+              <strong style={{ fontSize: '0.9375rem', color: 'var(--violet-900)' }}>Administrator Authorization Required</strong>
+            </div>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+              You are about to push <strong>{cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Excel grade files</strong> and active class visibility settings from this offline computer to your live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>).
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.8125rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
+            <div>✓ Overwrites online Excel sheets with current offline updates (1-way push)</div>
+            <div>✓ Immediately recalculates student ratings, initial grades, and attendance online</div>
+            <div>✓ Preserves registered student accounts and self-service passwords</div>
+          </div>
+
+          {!cloudStatus.online && (
+            <div style={{ padding: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10, color: '#991b1b', fontSize: '0.8125rem' }}>
+              <AlertTriangle size={18} color="#dc2626" />
+              <span>Warning: AWS server appears offline or unreachable. Please check your internet connection before proceeding.</span>
+            </div>
+          )}
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 0', fontSize: '0.875rem' }}>
+            <input 
+              type="checkbox" 
+              checked={authorizedConfirm} 
+              onChange={e => setAuthorizedConfirm(e.target.checked)} 
+              disabled={cloudSyncing} 
+              style={{ width: 18, height: 18 }} 
+            />
+            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+              I authorize updating the live AWS Cloud portal with offline Excel data.
+            </span>
+          </label>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+            <button className="btn btn-secondary" onClick={() => setSyncModalOpen(false)} disabled={cloudSyncing}>
+              Cancel
+            </button>
+            <button 
+              className="btn btn-primary" 
+              onClick={handlePushToCloud} 
+              disabled={!authorizedConfirm || cloudSyncing}
+              style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+            >
+              {cloudSyncing ? <><LoadingSpinner size="sm" /> Syncing to AWS...</> : <><CloudUpload size={16} /> Authorize & Push Now</>}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 32 }}>
@@ -448,6 +633,7 @@ function SettingsPage() {
       <div className="tabs">
         <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>General & Identity</button>
         <button className={`tab-btn ${activeTab === 'terms' ? 'active' : ''}`} onClick={() => setActiveTab('terms')}>Terms & Access</button>
+        <button className={`tab-btn ${activeTab === 'cloud' ? 'active' : ''}`} onClick={() => setActiveTab('cloud')}>Cloud Sync & AWS</button>
         <button className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`} onClick={() => setActiveTab('system')}>System Logs & Sessions</button>
       </div>
 
@@ -629,6 +815,50 @@ function SettingsPage() {
               </div>
               <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={handleSave} disabled={saving}>
                 {saving ? <><LoadingSpinner /> Saving...</> : 'Save Term Settings'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'cloud' && (
+          <div className="card fade-in">
+            <div className="card-header"><h3 style={{ fontSize: '1rem' }}>AWS Cloud Integration Settings</h3></div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ padding: '12px 16px', background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                Configure the connection between this offline administrative application and your public AWS EC2 instance.
+                When you authorize a sync, all offline Excel grade files are transmitted to this address.
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Live AWS Cloud Server URL</label>
+                <input 
+                  className="form-input" 
+                  type="text" 
+                  value={form.cloudSync?.serverUrl || 'http://16.59.47.134'} 
+                  onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), serverUrl: e.target.value } }))} 
+                  placeholder="e.g. http://16.59.47.134" 
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  The public IP or domain of your AWS EC2 instance running Grade Portal v2.
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Cloud Sync Authorization Secret Key</label>
+                <input 
+                  className="form-input" 
+                  type="password" 
+                  value={form.cloudSync?.secretKey || 'gradeportal-secure-cloud-sync-key-2026'} 
+                  onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), secretKey: e.target.value } }))} 
+                  placeholder="Secret synchronization token" 
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Shared secret token used to authenticate synchronization requests between this offline machine and AWS.
+                </p>
+              </div>
+
+              <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 8 }} onClick={handleSave} disabled={saving}>
+                {saving ? <><LoadingSpinner /> Saving...</> : 'Save Cloud Settings'}
               </button>
             </div>
           </div>
