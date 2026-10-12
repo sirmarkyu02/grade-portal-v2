@@ -44,5 +44,17 @@
     "hideBreakdown": {
       "Term 1": true
     }
+  },
+  "BSHM 1B - MMW.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {},
+    "blockedStudents": [],
+    "releaseFinals": {
+      "Term 2": false
+    }
   }
 }

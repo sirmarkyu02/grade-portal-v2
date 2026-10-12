@@ -387,9 +387,10 @@ function TemplatesPage() {
             {uploading && <LoadingSpinner />}
           </div>
           <div style={{ marginTop: 16, padding: 16, background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)' }}>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 6 }}>Required Sheets:</p>
-            <ul style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingLeft: 16 }}>
-              <li>Data Input</li><li>Term 1</li><li>Term 2</li><li>Term 3</li>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 6 }}>Supported Template Formats:</p>
+            <ul style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <li><strong>High School:</strong> Data Input, Term 1..4, Attendance, Grading Summary</li>
+              <li><strong>Tertiary / College:</strong> Settings, Input, PRELIMS, MIDTERM, PRE-FINALS, FINALS, Summary</li>
             </ul>
           </div>
         </div>
@@ -833,7 +834,7 @@ function StudentsOverview() {
                 <div className="table-wrapper">
                   <table className="data-table">
                     <thead>
-                      <tr><th>Subject</th><th>Section</th><th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th></tr>
+                      <tr><th>Subject</th><th>Section</th><th>T1 / PRE</th><th>T2 / MID</th><th>T3 / PF</th><th>T4 / FIN</th><th>Final</th><th>Remarks</th></tr>
                     </thead>
                     <tbody>
                       {details.student.subjects.map((sub, i) => {
@@ -842,14 +843,13 @@ function StudentsOverview() {
                           <tr key={i}>
                             <td style={{ fontWeight: 600 }}>{sub.info.subject}</td>
                             <td>{sub.info.section}</td>
-                            <td><GradePill grade={gs.term1 || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term2 || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term3 || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term1 || sub.terms?.['PRELIMS']?.summary?.transmutedGrade || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term2 || sub.terms?.['MIDTERM']?.summary?.transmutedGrade || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term3 || sub.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term4 || sub.terms?.['FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
                             <td><GradePill grade={gs.finalGrade} /></td>
                             <td>{gs.remarks ? (
-                              <span className={`badge ${gs.remarks.toLowerCase() === 'passed' ? 'badge-success' : gs.remarks.toLowerCase() === 'failed' ? 'badge-danger' : 'badge-neutral'}`}>
-                                {gs.remarks}
-                              </span>
+                              <StatusBadge status={gs.remarks} />
                             ) : '—'}</td>
                           </tr>
                         );

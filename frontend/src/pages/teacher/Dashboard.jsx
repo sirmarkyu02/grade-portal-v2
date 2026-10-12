@@ -161,7 +161,8 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved, initial
         const idx = next.attendance.findIndex(a => !a.dateStr);
         if (idx !== -1) {
           next.attendance = [...next.attendance];
-          next.attendance[idx] = { ...next.attendance[idx], dateStr: new Date().toLocaleDateString('en-US'), term: activeTermTab.replace('Term ', 'T') };
+          const attTerm = classInfo.templateType === 'tertiary' ? activeTermTab : activeTermTab.replace('Term ', 'T');
+          next.attendance[idx] = { ...next.attendance[idx], dateStr: new Date().toLocaleDateString('en-US'), term: attTerm };
         } else {
           toast.error('No more attendance columns available.');
         }
@@ -171,7 +172,10 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved, initial
         const idx = termData[type].findIndex(i => i.hps === null || i.hps === undefined || i.hps === '');
         if (idx !== -1) {
            const activeCount = termData[type].filter(i => i.hps !== null && i.hps !== undefined && i.hps !== '').length;
-           termData[type][idx] = { ...termData[type][idx], hps: 10, label: `${type === 'ww' ? 'WW' : 'PT'}${activeCount + 1}` };
+           const prefix = classInfo.templateType === 'tertiary' 
+             ? (type === 'ww' ? 'Q' : 'PRC')
+             : (type === 'ww' ? 'WW' : 'PT');
+           termData[type][idx] = { ...termData[type][idx], hps: 10, label: `${prefix}${activeCount + 1}` };
         } else {
           toast.error(`No more columns available for ${type.toUpperCase()}.`);
         }
@@ -319,22 +323,28 @@ function ManageColumnsModal({ classInfo, isTermLocked, onClose, onSaved, initial
       <div className="tabs" style={{ marginBottom: 16 }}>
         {initialMode !== 'attendance' && (
           <>
-            <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
-            <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
-            <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} onClick={() => setActiveComponentTab('exam')}>Exams</button>
+            <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} onClick={() => setActiveComponentTab('ww')}>
+              {classInfo.templateType === 'tertiary' ? 'Quizzes' : 'Written Works'}
+            </button>
+            <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} onClick={() => setActiveComponentTab('pt')}>
+              {classInfo.templateType === 'tertiary' ? 'Performance Tasks / Lab' : 'Performance Tasks'}
+            </button>
+            <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} onClick={() => setActiveComponentTab('exam')}>
+              {classInfo.templateType === 'tertiary' ? 'Major Exam' : 'Exams'}
+            </button>
           </>
         )}
         <button className={`tab-btn ${activeComponentTab === 'attendance' ? 'active' : ''}`} onClick={() => setActiveComponentTab('attendance')}>Attendance</button>
       </div>
       <div className="tabs" style={{ marginBottom: 16 }}>
-          {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
-            headers.columns?.[t] && <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>
+          {Object.keys(headers.columns || {}).map(t => (
+            <button key={t} className={`tab-btn ${activeTermTab === t ? 'active' : ''}`} onClick={() => setActiveTermTab(t)}>{t}</button>
           ))}
         </div>
       {activeComponentTab === 'ww' && renderTable(headers.columns?.[activeTermTab]?.ww, 'ww')}
       {activeComponentTab === 'pt' && renderTable(headers.columns?.[activeTermTab]?.pt, 'pt')}
       {activeComponentTab === 'exam' && renderTable(headers.columns?.[activeTermTab]?.exam, 'exam')}
-      {activeComponentTab === 'attendance' && renderTable(headers.attendance?.filter(a => !a.term || String(a.term).includes(activeTermTab.replace('Term ', ''))), 'attendance')}
+      {activeComponentTab === 'attendance' && renderTable(headers.attendance?.filter(a => !a.term || String(a.term).includes(activeTermTab.replace('Term ', '')) || a.term === activeTermTab), 'attendance')}
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
         <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
         <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
@@ -376,11 +386,17 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
     }
   };
 
-  const terms = [
-    { id: 1, name: 'Term 1', hideKey: 'hideTerm1' },
-    { id: 2, name: 'Term 2', hideKey: 'hideTerm2' },
-    { id: 3, name: 'Term 3', hideKey: 'hideTerm3' },
-    { id: 4, name: 'Term 4', hideKey: 'hideTerm4' }
+  const isTertiary = classInfo?.templateType === 'tertiary';
+  const terms = isTertiary ? [
+    { id: 1, name: 'PRELIMS', hideKey: 'hideTerm1', termKey: 'Term 1' },
+    { id: 2, name: 'MIDTERM', hideKey: 'hideTerm2', termKey: 'Term 2' },
+    { id: 3, name: 'PRE-FINALS', hideKey: 'hideTerm3', termKey: 'Term 3' },
+    { id: 4, name: 'FINALS', hideKey: 'hideTerm4', termKey: 'Term 4' }
+  ] : [
+    { id: 1, name: 'Term 1', hideKey: 'hideTerm1', termKey: 'PRELIMS' },
+    { id: 2, name: 'Term 2', hideKey: 'hideTerm2', termKey: 'MIDTERM' },
+    { id: 3, name: 'Term 3', hideKey: 'hideTerm3', termKey: 'PRE-FINALS' },
+    { id: 4, name: 'Term 4', hideKey: 'hideTerm4', termKey: 'FINALS' }
   ];
 
   return (
@@ -393,7 +409,8 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 8 }}>
         {terms.map(t => {
           const isTermHidden = form[t.hideKey] === true;
-          const isFinalReleased = form.releaseFinals?.[t.name] !== false;
+          const isFinalReleased = form.releaseFinals?.[t.name] !== false && (t.termKey ? form.releaseFinals?.[t.termKey] !== false : true);
+          const isBreakdownHidden = form.hideBreakdown?.[t.name] === true || (t.termKey ? form.hideBreakdown?.[t.termKey] === true : false);
 
           return (
             <div key={t.id} style={{
@@ -438,7 +455,10 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
                       <input 
                         type="checkbox" 
                         checked={isFinalReleased} 
-                        onChange={e => updateSetting('releaseFinals', e.target.checked, t.name)} 
+                        onChange={e => {
+                          updateSetting('releaseFinals', e.target.checked, t.name);
+                          if (t.termKey) updateSetting('releaseFinals', e.target.checked, t.termKey);
+                        }} 
                       />
                       <span className="toggle-slider" />
                     </label>
@@ -449,14 +469,17 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
                         Hide Grade Breakdown
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Only final grade shown (WW, PT, Exams hidden)
+                        Only final grade shown ({isTertiary ? 'Quizzes, PT/Lab, Exams hidden' : 'WW, PT, Exams hidden'})
                       </div>
                     </div>
                     <label className="toggle toggle-sm">
                       <input 
                         type="checkbox" 
-                        checked={form.hideBreakdown?.[t.name] === true} 
-                        onChange={e => updateSetting('hideBreakdown', e.target.checked, t.name)} 
+                        checked={isBreakdownHidden} 
+                        onChange={e => {
+                          updateSetting('hideBreakdown', e.target.checked, t.name);
+                          if (t.termKey) updateSetting('hideBreakdown', e.target.checked, t.termKey);
+                        }} 
                       />
                       <span className="toggle-slider" />
                     </label>
@@ -726,9 +749,9 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {[
-          ['Written Works', term.writtenWorks],
-          ['Performance Tasks', term.performanceTasks],
-          ['Examinations', Object.values(term.exams || {})]
+          [classInfo.templateType === 'tertiary' ? 'Quizzes (20%)' : 'Written Works', term.quizzes || term.writtenWorks],
+          [classInfo.templateType === 'tertiary' ? 'Performance Tasks / Laboratory (30%)' : 'Performance Tasks', term.performanceTasks],
+          [classInfo.templateType === 'tertiary' ? 'Major Examination (50%)' : 'Examinations', Object.values(term.exams || {})]
         ].map(([title, items]) => (
           items && items.length > 0 ? (
             <div key={title}>
@@ -1056,9 +1079,15 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                 </div>
                 <div className="tabs" style={{ gap: 4 }}>
                   <button className={`tab-btn ${activeComponentTab === 'summary' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('summary')}>Summary</button>
-                  <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('ww')}>Written Works</button>
-                  <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('pt')}>Performance Tasks</button>
-                  <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('exam')}>Exams</button>
+                  <button className={`tab-btn ${activeComponentTab === 'ww' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('ww')}>
+                    {classInfo.templateType === 'tertiary' ? 'Quizzes' : 'Written Works'}
+                  </button>
+                  <button className={`tab-btn ${activeComponentTab === 'pt' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('pt')}>
+                    {classInfo.templateType === 'tertiary' ? 'Performance Tasks / Lab' : 'Performance Tasks'}
+                  </button>
+                  <button className={`tab-btn ${activeComponentTab === 'exam' ? 'active' : ''}`} style={{ fontSize: '0.8125rem', padding: '4px 12px' }} onClick={() => setActiveComponentTab('exam')}>
+                    {classInfo.templateType === 'tertiary' ? 'Major Exam' : 'Exams'}
+                  </button>
                 </div>
               </div>
 
@@ -1070,13 +1099,20 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                       <th style={{ position: 'sticky', left: 40, zIndex: 11, background: 'var(--brand-50)', minWidth: 150 }}>Student Name</th>
                       {activeComponentTab === 'summary' ? (
                         <>
-                          <th>Student No.</th><th>WW Score</th><th>PT Score</th><th>Exam Score</th><th>Initial</th><th>Final Grade</th><th>Status</th><th className="no-print">Action</th>
+                          <th>Student No.</th>
+                          <th>{classInfo.templateType === 'tertiary' ? 'Quizzes (20%)' : 'WW Score'}</th>
+                          <th>{classInfo.templateType === 'tertiary' ? 'PT / Lab (30%)' : 'PT Score'}</th>
+                          <th>{classInfo.templateType === 'tertiary' ? 'Major Exam (50%)' : 'Exam Score'}</th>
+                          <th>Initial</th><th>Final Grade</th><th>Status</th><th className="no-print">Action</th>
                         </>
                       ) : (
                         // Component-specific headers
                         (() => {
                           let itemsArr = [];
-                          const itemsObj = students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                          const compKey = activeComponentTab === 'ww' 
+                            ? (classInfo.templateType === 'tertiary' ? 'quizzes' : 'writtenWorks')
+                            : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams';
+                          const itemsObj = students[0]?.terms?.[activeTermTab]?.[compKey] || students[0]?.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : 'exams'];
                           itemsArr = Array.isArray(itemsObj) ? itemsObj : Object.values(itemsObj || {});
                           
                           return itemsArr.map((item, i) => (
@@ -1093,7 +1129,10 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                     {filtered.map((s, i) => {
                       const term = s.terms?.[activeTermTab];
                       const summ = term?.summary;
-                      const rawItems = term?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
+                      const compKey = activeComponentTab === 'ww' 
+                        ? (classInfo.templateType === 'tertiary' ? 'quizzes' : 'writtenWorks')
+                        : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams';
+                      const rawItems = term?.[compKey] || term?.[activeComponentTab === 'ww' ? 'writtenWorks' : 'exams'];
                       const items = Array.isArray(rawItems) ? rawItems : Object.values(rawItems || {});
                       
                       return (
@@ -1351,7 +1390,17 @@ function ClassDetailPage({ classInfo, onBack }) {
               <thead>
                 <tr>
                   <th>#</th><th>Student Name</th><th>Student No.</th>
-                  <th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th>
+                  {classInfo.templateType === 'tertiary' ? (
+                    <>
+                      <th>Prelims</th><th>Midterm</th><th>Pre-Finals</th><th>Finals</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>Term 1</th><th>Term 2</th><th>Term 3</th>
+                      {visibleTerms.includes('Term 4') && <th>Term 4</th>}
+                    </>
+                  )}
+                  <th>Final</th><th>Remarks</th>
                 </tr>
               </thead>
               <tbody>
@@ -1362,9 +1411,21 @@ function ClassDetailPage({ classInfo, onBack }) {
                       <td style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
                       <td style={{ fontWeight: 600 }}>{s.name}</td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
-                      <td><GradePill grade={gs?.term1 || s.terms?.['Term 1']?.transmutedGrade} /></td>
-                      <td><GradePill grade={gs?.term2 || s.terms?.['Term 2']?.transmutedGrade} /></td>
-                      <td><GradePill grade={gs?.term3 || s.terms?.['Term 3']?.transmutedGrade} /></td>
+                      {classInfo.templateType === 'tertiary' ? (
+                        <>
+                          <td><GradePill grade={gs?.term1 || s.terms?.['PRELIMS']?.transmutedGrade} /></td>
+                          <td><GradePill grade={gs?.term2 || s.terms?.['MIDTERM']?.transmutedGrade} /></td>
+                          <td><GradePill grade={gs?.term3 || s.terms?.['PRE-FINALS']?.transmutedGrade} /></td>
+                          <td><GradePill grade={gs?.term4 || s.terms?.['FINALS']?.transmutedGrade} /></td>
+                        </>
+                      ) : (
+                        <>
+                          <td><GradePill grade={gs?.term1 || s.terms?.['Term 1']?.transmutedGrade} /></td>
+                          <td><GradePill grade={gs?.term2 || s.terms?.['Term 2']?.transmutedGrade} /></td>
+                          <td><GradePill grade={gs?.term3 || s.terms?.['Term 3']?.transmutedGrade} /></td>
+                          {visibleTerms.includes('Term 4') && <td><GradePill grade={gs?.term4 || s.terms?.['Term 4']?.transmutedGrade} /></td>}
+                        </>
+                      )}
                       <td><GradePill grade={gs?.finalGrade} /></td>
                       <td>{gs?.remarks ? <StatusBadge status={gs.remarks} /> : <span className="badge badge-neutral">Pending</span>}</td>
                     </tr>
@@ -1400,7 +1461,7 @@ function ClassDetailPage({ classInfo, onBack }) {
                         <th style={{ position: 'sticky', left: 40, zIndex: 11, background: 'var(--brand-50)', minWidth: 220, width: 220, maxWidth: 220, padding: '8px 8px', overflow: 'hidden', textOverflow: 'ellipsis' }}>Student Name</th>
                   {(() => {
                     const attRecs = (filtered.find(s => s.attendance?.records?.length > 0))?.attendance?.records || [];
-                      const itemsArr = attRecs.filter(a => !a.term || String(a.term).includes(activeAttTerm.replace('Term ', '')));
+                      const itemsArr = attRecs.filter(a => !a.term || a.term === activeAttTerm || String(a.term).includes(activeAttTerm.replace('Term ', '')));
                     return itemsArr.map((item, i) => (
                       <th key={i} style={{ textAlign: 'center', minWidth: 50, padding: '8px 4px' }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{!isNaN(new Date(item.date)) ? `${(new Date(item.date).getMonth() + 1).toString().padStart(2, '0')}/${new Date(item.date).getDate().toString().padStart(2, '0')}` : item.date}</div>
@@ -1419,7 +1480,7 @@ function ClassDetailPage({ classInfo, onBack }) {
               <tbody>
                 {filtered.map((s, i) => {
                   const attRecs = s.attendance?.records || [];
-                  const items = attRecs.filter(a => !a.term || String(a.term).includes(activeAttTerm.replace('Term ', '')));
+                  const items = attRecs.filter(a => !a.term || a.term === activeAttTerm || String(a.term).includes(activeAttTerm.replace('Term ', '')));
                   
                   return (
                     <tr key={i}>
@@ -1643,22 +1704,35 @@ function SubjectGrades({ subject }) {
       {term && (
         <>
           {/* Summary */}
-          <div className="grid-4">
-            {[
-              { label: 'Written Works', value: term.summary?.wwWS !== null ? `${term.summary.wwWS?.toFixed(2) ?? '—'}` : '—', icon: '📝' },
-              { label: 'Performance Tasks', value: term.summary?.ptWS !== null ? `${term.summary.ptWS?.toFixed(2) ?? '—'}` : '—', icon: '🎯' },
-              { label: 'Exams', value: term.summary?.examWS !== null ? `${term.summary.examWS?.toFixed(2) ?? '—'}` : '—', icon: '📋' },
-              { label: 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
-            ].map((s, i) => (
-              <div key={i} className="stat-card stat-card-sm">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
-                </div>
-                {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
+          {(() => {
+            const isTertiary = subject.info?.templateType === 'tertiary';
+            const hasInitial = term.summary?.initialGrade !== undefined && term.summary?.initialGrade !== null && String(term.summary.initialGrade).trim() !== '';
+            const fallbackInitial = ((term.summary?.wwWS || 0) + (term.summary?.ptWS || 0) + (term.summary?.examWS || 0));
+            const hasAnyWS = (term.summary?.wwWS !== null && term.summary?.wwWS !== undefined) ||
+                             (term.summary?.ptWS !== null && term.summary?.ptWS !== undefined) ||
+                             (term.summary?.examWS !== null && term.summary?.examWS !== undefined);
+            const displayInitial = hasInitial ? term.summary.initialGrade : (hasAnyWS ? fallbackInitial : null);
+
+            return (
+              <div className="grid-5">
+                {[
+                  { label: isTertiary ? 'Quizzes (20% Wt)' : 'Written Works', value: term.summary?.wwWS !== null && term.summary?.wwWS !== undefined ? `${Number(term.summary.wwWS).toFixed(2)}%` : '—', icon: '📝' },
+                  { label: isTertiary ? 'PT / Lab (30% Wt)' : 'Performance Tasks', value: term.summary?.ptWS !== null && term.summary?.ptWS !== undefined ? `${Number(term.summary.ptWS).toFixed(2)}%` : '—', icon: '🎯' },
+                  { label: isTertiary ? 'Major Exam (50% Wt)' : 'Exams', value: term.summary?.examWS !== null && term.summary?.examWS !== undefined ? `${Number(term.summary.examWS).toFixed(2)}%` : '—', icon: '📋' },
+                  { label: 'Initial Grade', value: displayInitial !== null && displayInitial !== undefined ? `${Number(displayInitial).toFixed(2)}%` : '—', icon: '📊', isInitial: true },
+                  { label: isTertiary ? 'Term Rating (EQV)' : 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
+                ].map((s, i) => (
+                  <div key={i} className="stat-card stat-card-sm" style={s.isInitial ? { background: 'var(--grad-soft)', border: '1px solid var(--brand-200)' } : s.isGrade ? { background: 'var(--grad-soft)', border: '1px solid var(--violet-200)' } : {}}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: s.isInitial ? 'var(--brand-700)' : s.isGrade ? 'var(--violet-700)' : 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
+                    </div>
+                    {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem', color: s.isInitial ? 'var(--brand-700)' : 'inherit' }}>{s.value}</p>}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
 
           {/* Status banner if present */}
           {term.summary?.status && (
@@ -1846,7 +1920,7 @@ function StudentsOverview() {
                     <div className="table-wrapper">
                       <table className="data-table">
                         <thead>
-                          <tr><th>Subject</th><th>Section</th><th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th></tr>
+                          <tr><th>Subject</th><th>Section</th><th>T1 / PRE</th><th>T2 / MID</th><th>T3 / PF</th><th>T4 / FIN</th><th>Final</th><th>Remarks</th></tr>
                         </thead>
                         <tbody>
                           {details.student.subjects.map((sub, i) => {
@@ -1855,14 +1929,13 @@ function StudentsOverview() {
                               <tr key={i} onClick={() => setSelectedSubject(sub)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                 <td style={{ fontWeight: 600, color: 'var(--brand-600)' }}>{sub.info.subject}</td>
                                 <td>{sub.info.section}</td>
-                                <td><GradePill grade={gs.term1 || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.term2 || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.term3 || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term1 || sub.terms?.['PRELIMS']?.summary?.transmutedGrade || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term2 || sub.terms?.['MIDTERM']?.summary?.transmutedGrade || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term3 || sub.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                                <td><GradePill grade={gs.term4 || sub.terms?.['FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
                                 <td><GradePill grade={gs.finalGrade} /></td>
                                 <td>{gs.remarks ? (
-                                  <span className={`badge ${gs.remarks.toLowerCase() === 'passed' ? 'badge-success' : gs.remarks.toLowerCase() === 'failed' ? 'badge-danger' : 'badge-neutral'}`}>
-                                    {gs.remarks}
-                                  </span>
+                                  <StatusBadge status={gs.remarks} />
                                 ) : '—'}</td>
                               </tr>
                             );

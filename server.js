@@ -349,6 +349,338 @@ function parseGradingSummary(ws, studentsList) {
   return students;
 }
 
+// ─── Tertiary / College Template Helpers ────────────────────────────────────
+function detectWorkbookType(wb) {
+  if (wb.Sheets['Data Input'] && (wb.Sheets['Term 1'] || wb.Sheets['Term 2'])) return 'high_school';
+  if (wb.Sheets['Settings'] && wb.Sheets['Input']) return 'tertiary';
+  return null;
+}
+
+function getTertiaryTransmuted(initial) {
+  if (initial === null || initial === undefined || isNaN(initial)) return null;
+  const num = Number(initial);
+  if (num >= 97.5) return 1.0;
+  if (num >= 94.5) return 1.25;
+  if (num >= 91.5) return 1.5;
+  if (num >= 86.5) return 1.75;
+  if (num >= 81.5) return 2.0;
+  if (num >= 76.0) return 2.25;
+  if (num >= 70.5) return 2.5;
+  if (num >= 65.0) return 2.75;
+  if (num >= 59.5) return 3.0;
+  return 5.0;
+}
+
+function parseTertiaryFile(wb, fname) {
+  const wsSettings = wb.Sheets['Settings'];
+  const wsInput = wb.Sheets['Input'];
+  const wsSummary = wb.Sheets['Summary'];
+  const cell = (ws, r, c) => {
+    if (!ws) return null;
+    const a = XLSX.utils.encode_cell({ r, c });
+    return ws[a] ? ws[a].v : null;
+  };
+
+  const subjectInfo = {
+    campus: cell(wsSettings, 2, 4) || '',
+    department: cell(wsSettings, 3, 4) || '',
+    schoolYear: cell(wsSettings, 4, 4) || '',
+    semester: cell(wsSettings, 5, 4) || '',
+    instructor: cell(wsSettings, 6, 4) || '',
+    subject: cell(wsSettings, 7, 4) || fname.replace('.xlsx', ''),
+    gradeLevel: 'Tertiary',
+    classNo: cell(wsSettings, 2, 15) || '',
+    code: cell(wsSettings, 3, 15) || '',
+    section: cell(wsSettings, 4, 15) || '',
+    room: cell(wsSettings, 5, 15) || '',
+    schedule: cell(wsSettings, 6, 15) || '',
+    time: cell(wsSettings, 7, 15) || '',
+    templateType: 'tertiary',
+    weights: {
+      writtenOral: cell(wsSettings, 33, 6) || 0.2, // Quizzes
+      performanceTask: cell(wsSettings, 28, 6) || 0.3, // PT
+      termExam: cell(wsSettings, 38, 6) || 0.5, // Exam
+    },
+    termWeights: {
+      'PRELIMS': cell(wsSummary, 5, 7) || 0.2,
+      'MIDTERM': cell(wsSummary, 5, 9) || 0.2,
+      'PRE-FINALS': cell(wsSummary, 5, 11) || 0.2,
+      'FINALS': cell(wsSummary, 5, 13) || 0.4,
+    },
+    fileName: fname,
+  };
+
+  const studentsList = [];
+  for (let r = 7; r <= 56; r++) { // rows 8 to 57 (0-indexed 7..56)
+    const sNo = cell(wsInput, r, 3);
+    const sName = cell(wsInput, r, 5);
+    if (sNo && sName) {
+      let strNo = String(sNo).trim();
+      if (strNo.length === 10 && strNo.startsWith('2')) strNo = '0' + strNo;
+      studentsList.push({
+        studentNo: strNo,
+        studentName: String(sName).trim(),
+        inputRow: r,
+        termRow: r - 1,
+        summaryRow: r - 1
+      });
+    }
+  }
+
+  const termDefinitions = [
+    { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16 },
+    { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29 },
+    { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42 },
+    { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55 }
+  ];
+
+  const terms = {};
+  termDefinitions.forEach(td => {
+    const wsTerm = wb.Sheets[td.name];
+    const ptItems = [];
+    td.ptCols.forEach(c => {
+      const hps = cell(wsInput, 5, c);
+      if (hps && typeof hps === 'number' && hps > 0) {
+        ptItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `PRC${c - td.ptCols[0] + 1}`) });
+      }
+    });
+
+    const quizItems = [];
+    td.quizCols.forEach(c => {
+      const hps = cell(wsInput, 5, c);
+      if (hps && typeof hps === 'number' && hps > 0) {
+        quizItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `Q${c - td.quizCols[0] + 1}`) });
+      }
+    });
+
+    const examHps = cell(wsInput, 5, td.examCol);
+    const examItem = (examHps && typeof examHps === 'number' && examHps > 0) ? {
+      col: td.examCol,
+      hps: examHps,
+      label: String(cell(wsInput, 4, td.examCol) || 'Major Exam')
+    } : null;
+
+    // Dynamically detect summary and weight columns in wsTerm
+    let gradeCol = 38, eqvCol = 39, rankCol = 40, ptWSCol = 24, wwWSCol = 34, examWSCol = 37;
+    if (wsTerm) {
+      for (let c = 20; c <= 60; c++) {
+        const v2 = String(cell(wsTerm, 2, c) || '').trim().toUpperCase();
+        const v3 = cell(wsTerm, 3, c);
+        const v4 = cell(wsTerm, 4, c);
+        if (v2 === 'GRADE') gradeCol = c;
+        if (v2 === 'EQUIVALENT') eqvCol = c;
+        if (v2 === 'RANK') rankCol = c;
+        if ((v3 === 0.3 || v4 === 0.3) && ptWSCol === 24) ptWSCol = c;
+        if ((v3 === 0.2 || v4 === 0.2) && wwWSCol === 34) wwWSCol = c;
+        if ((v3 === 0.5 || v4 === 0.5) && examWSCol === 37) examWSCol = c;
+      }
+    }
+
+    const termStudents = [];
+    for (const stu of studentsList) {
+      const r = stu.inputRow;
+      const tr = stu.termRow;
+
+      const performanceTasks = ptItems.map(item => ({
+        label: item.label,
+        hps: item.hps,
+        score: cell(wsInput, r, item.col),
+        col: item.col,
+        row: r,
+        sheet: 'Input'
+      }));
+
+      const quizzes = quizItems.map(item => ({
+        label: item.label,
+        hps: item.hps,
+        score: cell(wsInput, r, item.col),
+        col: item.col,
+        row: r,
+        sheet: 'Input'
+      }));
+
+      const exams = {};
+      if (examItem) {
+        exams['EX'] = {
+          label: examItem.label,
+          hps: examItem.hps,
+          score: cell(wsInput, r, examItem.col),
+          col: examItem.col,
+          row: r,
+          weight: subjectInfo.weights.termExam,
+          sheet: 'Input'
+        };
+      }
+
+      const rawPtWS = wsTerm ? cell(wsTerm, tr, ptWSCol) : null;
+      const rawWwWS = wsTerm ? cell(wsTerm, tr, wwWSCol) : null;
+      const rawExamWS = wsTerm ? cell(wsTerm, tr, examWSCol) : null;
+      const rawInitial = wsTerm ? cell(wsTerm, tr, gradeCol) : null;
+      const rawTransmuted = wsTerm ? cell(wsTerm, tr, eqvCol) : null;
+      const rawRank = wsTerm ? cell(wsTerm, tr, rankCol) : null;
+
+      let ptWS = typeof rawPtWS === 'number' ? round2(rawPtWS) : (rawPtWS !== null && rawPtWS !== '' && !isNaN(Number(rawPtWS)) ? round2(Number(rawPtWS)) : null);
+      let wwWS = typeof rawWwWS === 'number' ? round2(rawWwWS) : (rawWwWS !== null && rawWwWS !== '' && !isNaN(Number(rawWwWS)) ? round2(Number(rawWwWS)) : null);
+      let examWS = typeof rawExamWS === 'number' ? round2(rawExamWS) : (rawExamWS !== null && rawExamWS !== '' && !isNaN(Number(rawExamWS)) ? round2(Number(rawExamWS)) : null);
+
+      if (ptWS === null && performanceTasks.length > 0) {
+        let ptTot = 0, ptMax = 0, hasPt = false;
+        performanceTasks.forEach(p => { ptMax += (p.hps || 0); if (p.score !== null && p.score !== undefined && p.score !== '') { ptTot += Number(p.score); hasPt = true; } });
+        if (hasPt && ptMax > 0) ptWS = round2((ptTot / ptMax) * 100 * (subjectInfo.weights.performanceTask || 0.3));
+      }
+      if (wwWS === null && quizzes.length > 0) {
+        let wwTot = 0, wwMax = 0, hasWw = false;
+        quizzes.forEach(q => { wwMax += (q.hps || 0); if (q.score !== null && q.score !== undefined && q.score !== '') { wwTot += Number(q.score); hasWw = true; } });
+        if (hasWw && wwMax > 0) wwWS = round2((wwTot / wwMax) * 100 * (subjectInfo.weights.writtenOral || 0.2));
+      }
+      if (examWS === null && exams['EX']) {
+        const ex = exams['EX'];
+        if (ex.score !== null && ex.score !== undefined && ex.score !== '' && ex.hps > 0) {
+          examWS = round2((Number(ex.score) / ex.hps) * 100 * (subjectInfo.weights.termExam || 0.5));
+        }
+      }
+
+      let initialGrade = typeof rawInitial === 'number' ? round2(rawInitial) : (rawInitial !== null && rawInitial !== '' && !isNaN(Number(rawInitial)) ? round2(Number(rawInitial)) : null);
+      // Fallback calculation like in SHS
+      if (initialGrade === null) {
+        const hasScores = (ptWS !== null || wwWS !== null || examWS !== null);
+        if (hasScores) {
+          initialGrade = round2((ptWS || 0) + (wwWS || 0) + (examWS || 0));
+        }
+      }
+
+      let transmutedGrade = typeof rawTransmuted === 'number' ? round2(rawTransmuted) : (rawTransmuted !== null && String(rawTransmuted).trim() !== '' && String(rawTransmuted).trim() !== '-' ? rawTransmuted : null);
+      if ((transmutedGrade === null || transmutedGrade === '') && initialGrade !== null) {
+        transmutedGrade = getTertiaryTransmuted(initialGrade);
+      }
+
+      const rank = rawRank !== null && rawRank !== undefined && String(rawRank).trim() !== '' ? rawRank : null;
+
+      let status = null;
+      if (transmutedGrade !== null && transmutedGrade !== undefined && transmutedGrade !== '') {
+        const str = String(transmutedGrade).toUpperCase();
+        if (str === 'INC') status = 'Incomplete';
+        else if (str === 'DRP') status = 'Dropped';
+        else if (str === '-') status = 'In Progress';
+        else {
+          const num = Number(transmutedGrade);
+          if (!isNaN(num)) {
+            status = num <= 3.0 ? `Passed [${num.toFixed(2)}]` : `Failed [${num.toFixed(2)}]`;
+          }
+        }
+      }
+
+      termStudents.push({
+        studentNo: stu.studentNo,
+        studentName: stu.studentName,
+        performanceTasks,
+        quizzes,
+        writtenWorks: quizzes,
+        exams,
+        summary: {
+          ptWS,
+          wwWS,
+          examWS,
+          initialGrade,
+          transmutedGrade,
+          rank,
+          status
+        }
+      });
+    }
+    terms[td.name] = termStudents;
+  });
+
+  // Attendance
+  const attendance = {};
+  for (const stu of studentsList) {
+    const tr = stu.termRow;
+    const records = [];
+    const summary = {
+      term1: { present: 0, absent: 0, late: 0, excused: 0 },
+      term2: { present: 0, absent: 0, late: 0, excused: 0 },
+      term3: { present: 0, absent: 0, late: 0, excused: 0 },
+      term4: { present: 0, absent: 0, late: 0, excused: 0 }
+    };
+
+    termDefinitions.forEach((td, tIdx) => {
+      const wsTerm = wb.Sheets[td.name];
+      if (!wsTerm) return;
+      const termKey = 'term' + (tIdx + 1);
+      let curMonth = '';
+      for (let c = 6; c <= 20; c++) {
+        const m = cell(wsTerm, 2, c);
+        if (m) curMonth = String(m).trim();
+        const d = cell(wsTerm, 3, c);
+        const day = cell(wsTerm, 4, c);
+        if (d && !isNaN(d)) {
+          const dateStr = curMonth ? `${curMonth} ${d}` : `Day ${d}`;
+          const rawVal = cell(wsTerm, tr, c);
+          let stat = null;
+          if (rawVal !== null && rawVal !== undefined && rawVal !== '' && rawVal !== '-') {
+            if (rawVal === 'P' || (typeof rawVal === 'number' && rawVal > 0)) {
+              stat = 'P';
+              summary[termKey].present++;
+            } else if (rawVal === 'A' || rawVal === 0) {
+              stat = 'A';
+              summary[termKey].absent++;
+            } else if (rawVal === 'L') {
+              stat = 'L';
+              summary[termKey].late++;
+            } else if (rawVal === 'E') {
+              stat = 'E';
+              summary[termKey].excused++;
+            }
+          }
+          records.push({
+            date: dateStr,
+            term: td.name,
+            status: stat,
+            col: c,
+            row: tr,
+            sheet: td.name
+          });
+        }
+      }
+    });
+
+    attendance[stu.studentNo] = {
+      studentName: stu.studentName,
+      records,
+      summary,
+      status: 'Active'
+    };
+  }
+
+  // Summary
+  const gradingSummary = {};
+  for (const stu of studentsList) {
+    const sr = stu.summaryRow;
+    const prelimVal = cell(wsSummary, sr, 8);
+    const midtermVal = cell(wsSummary, sr, 10);
+    const preFinalVal = cell(wsSummary, sr, 12);
+    const finalVal = cell(wsSummary, sr, 14);
+    const finalGrade = cell(wsSummary, sr, 18);
+    const remarks = cell(wsSummary, sr, 19) || '';
+
+    gradingSummary[stu.studentNo] = {
+      studentName: stu.studentName,
+      term1: prelimVal,
+      term2: midtermVal,
+      term3: preFinalVal,
+      term4: finalVal,
+      finalGrade,
+      remarks,
+      prelims: { pct: cell(wsSummary, sr, 7), eqv: prelimVal },
+      midterm: { pct: cell(wsSummary, sr, 9), eqv: midtermVal },
+      preFinals: { pct: cell(wsSummary, sr, 11), eqv: preFinalVal },
+      finals: { pct: cell(wsSummary, sr, 13), eqv: finalVal }
+    };
+  }
+
+  return { subjectInfo, studentsList, terms, attendance, gradingSummary };
+}
+
 // ─── Load All Grade Data ─────────────────────────────────────────────────────
 function loadAllData() {
   console.log(`[${new Date().toLocaleTimeString()}] 📂 Loading grade data...`);
@@ -359,6 +691,39 @@ function loadAllData() {
     try {
       const fpath = path.join(GRADES_DIR, fname);
       const wb = XLSX.readFile(fpath);
+      const type = detectWorkbookType(wb);
+      if (!type) continue;
+
+      if (type === 'tertiary') {
+        const parsed = parseTertiaryFile(wb, fname);
+        for (const stu of parsed.studentsList) {
+          const studentNo = stu.studentNo;
+          const sName = stu.studentName;
+          if (!newMap[studentNo]) newMap[studentNo] = { studentNo, name: sName, subjects: [] };
+
+          const studentTerms = {};
+          for (const [termName, termStudents] of Object.entries(parsed.terms)) {
+            const match = termStudents.find(s => s.studentNo === studentNo);
+            if (match) studentTerms[termName] = match;
+          }
+
+          const newSubjectEntry = {
+            info: parsed.subjectInfo,
+            terms: studentTerms,
+            attendance: parsed.attendance[studentNo] || null,
+            gradingSummary: parsed.gradingSummary[studentNo] || null,
+          };
+
+          const existingIdx = newMap[studentNo].subjects.findIndex(
+            sub => sub.info.subject === parsed.subjectInfo.subject && sub.info.section === parsed.subjectInfo.section
+          );
+          if (existingIdx !== -1) newMap[studentNo].subjects[existingIdx] = newSubjectEntry;
+          else newMap[studentNo].subjects.push(newSubjectEntry);
+        }
+        continue;
+      }
+
+      // High School Template
       const di = wb.Sheets['Data Input'];
       if (!di) continue;
 
@@ -374,6 +739,7 @@ function loadAllData() {
         room: cellVal(di, 'G17') || '',
         schedule: cellVal(di, 'G18') || '',
         time: cellVal(di, 'G19') || '',
+        templateType: 'high_school',
         weights: {
           writtenOral: cellVal(di, 'H25') || 0,
           performanceTask: cellVal(di, 'H26') || 0,
@@ -533,19 +899,28 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   // Student
-  const student = studentsMap[id];
+  const unpaddedId = id.replace(/^0+/, '');
+  const student = studentsMap[id] || studentsMap[unpaddedId];
   if (!student) return res.status(404).json({ error: 'User not found. Please check your ID.' });
-  if (accountStatusConfig[id] === 'suspended') return res.status(403).json({ error: 'Account suspended.' });
+  const canonicalId = student.studentNo;
 
-  const expectedPw = passwordsConfig[id] ? String(passwordsConfig[id]) : id;
-  if (pw !== expectedPw) return res.status(401).json({ error: 'Incorrect password.' });
+  if (accountStatusConfig[canonicalId] === 'suspended' || accountStatusConfig[unpaddedId] === 'suspended') {
+    return res.status(403).json({ error: 'Account suspended.' });
+  }
 
-  const profile = studentProfilesConfig[id] || {};
+  const customPw = passwordsConfig[canonicalId] || passwordsConfig[unpaddedId];
+  const isPwValid = customPw
+    ? (pw === String(customPw))
+    : (pw === canonicalId || pw === unpaddedId || pw === id);
+
+  if (!isPwValid) return res.status(401).json({ error: 'Incorrect password.' });
+
+  const profile = studentProfilesConfig[canonicalId] || studentProfilesConfig[unpaddedId] || {};
   const isOnboarded = !!profile.onboarded;
-  const token = createSession(id, 'student', { name: student.name });
-  logActivity(id, 'student', 'Login', 'Student logged in');
+  const token = createSession(canonicalId, 'student', { name: student.name });
+  logActivity(canonicalId, 'student', 'Login', 'Student logged in');
 
-  res.json({ success: true, role: 'student', token, isOnboarded, user: { id, name: student.name, ...profile } });
+  res.json({ success: true, role: 'student', token, isOnboarded, user: { id: canonicalId, name: student.name, ...profile } });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -606,18 +981,21 @@ app.put('/api/settings', requireAuth(['admin']), (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════════
 app.post('/api/student/onboard', requireAuth(['student']), uploadPhoto.single('photo'), (req, res) => {
   const studentNo = req.session.userId;
+  const unpaddedId = studentNo.replace(/^0+/, '');
+  const student = studentsMap[studentNo] || studentsMap[unpaddedId];
+  if (!student) return res.status(404).json({ error: 'Student not found.' });
+  const canonicalId = student.studentNo;
+
   const { newPassword, contactNo, parentName, parentContactNo, address } = req.body;
 
-  if (!studentsMap[studentNo]) return res.status(404).json({ error: 'Student not found.' });
-
   if (newPassword && newPassword.trim()) {
-    passwordsConfig[studentNo] = newPassword.trim();
+    passwordsConfig[canonicalId] = newPassword.trim();
     saveJSON(PASSWORDS_FILE, passwordsConfig);
   }
 
-  const photo = req.file ? `/photos/${req.file.filename}` : (studentProfilesConfig[studentNo]?.photo || null);
-  studentProfilesConfig[studentNo] = {
-    ...studentProfilesConfig[studentNo],
+  const photo = req.file ? `/photos/${req.file.filename}` : (studentProfilesConfig[canonicalId]?.photo || null);
+  studentProfilesConfig[canonicalId] = {
+    ...studentProfilesConfig[canonicalId],
     contactNo, parentName, parentContactNo, address, photo, onboarded: true, onboardedAt: new Date().toISOString()
   };
   saveJSON(STUDENT_PROFILES_FILE, studentProfilesConfig);
@@ -626,10 +1004,15 @@ app.post('/api/student/onboard', requireAuth(['student']), uploadPhoto.single('p
 
 app.post('/api/student/change-password', requireAuth(['student']), (req, res) => {
   const studentNo = req.session.userId;
+  const unpaddedId = studentNo.replace(/^0+/, '');
+  const canonicalId = studentsMap[studentNo] ? studentNo : (studentsMap[unpaddedId] ? studentsMap[unpaddedId].studentNo : studentNo);
   const { currentPassword, newPassword } = req.body;
-  const expectedPw = passwordsConfig[studentNo] ? String(passwordsConfig[studentNo]) : studentNo;
-  if (String(currentPassword) !== expectedPw) return res.status(401).json({ error: 'Incorrect current password.' });
-  passwordsConfig[studentNo] = newPassword.trim();
+  const customPw = passwordsConfig[canonicalId] || passwordsConfig[unpaddedId];
+  const isCurrentPwValid = customPw
+    ? (String(currentPassword) === String(customPw))
+    : (String(currentPassword) === canonicalId || String(currentPassword) === unpaddedId);
+  if (!isCurrentPwValid) return res.status(401).json({ error: 'Incorrect current password.' });
+  passwordsConfig[canonicalId] = newPassword.trim();
   saveJSON(PASSWORDS_FILE, passwordsConfig);
   res.json({ success: true });
 });
@@ -660,6 +1043,7 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
 
   clone.subjects.forEach(sub => {
     const fname = sub.info.fileName;
+    const isTertiary = sub.info.templateType === 'tertiary';
     const cs = { 
       hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, 
       ...(classSettingsConfig[fname] || {}) 
@@ -669,25 +1053,49 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
     } else {
       if (cs.hideTerm1) {
         if (sub.terms['Term 1']) delete sub.terms['Term 1'];
-        if (sub.gradingSummary) sub.gradingSummary.term1 = null;
+        if (sub.terms['PRELIMS']) delete sub.terms['PRELIMS'];
+        if (sub.gradingSummary) {
+          sub.gradingSummary.term1 = null;
+          if (sub.gradingSummary.prelims) sub.gradingSummary.prelims = null;
+        }
       }
       if (cs.hideTerm2) {
         if (sub.terms['Term 2']) delete sub.terms['Term 2'];
-        if (sub.gradingSummary) sub.gradingSummary.term2 = null;
+        if (sub.terms['MIDTERM']) delete sub.terms['MIDTERM'];
+        if (sub.gradingSummary) {
+          sub.gradingSummary.term2 = null;
+          if (sub.gradingSummary.midterm) sub.gradingSummary.midterm = null;
+        }
       }
       if (cs.hideTerm3) {
         if (sub.terms['Term 3']) delete sub.terms['Term 3'];
-        if (sub.gradingSummary) sub.gradingSummary.term3 = null;
+        if (sub.terms['PRE-FINALS']) delete sub.terms['PRE-FINALS'];
+        if (sub.gradingSummary) {
+          sub.gradingSummary.term3 = null;
+          if (sub.gradingSummary.preFinals) sub.gradingSummary.preFinals = null;
+        }
       }
       if (cs.hideTerm4) {
         if (sub.terms['Term 4']) delete sub.terms['Term 4'];
-        if (sub.gradingSummary) sub.gradingSummary.term4 = null;
+        if (sub.terms['FINALS']) delete sub.terms['FINALS'];
+        if (sub.gradingSummary) {
+          sub.gradingSummary.term4 = null;
+          if (sub.gradingSummary.finals) sub.gradingSummary.finals = null;
+        }
       }
       if (cs.hideAttendance) sub.attendance = null;
       if (cs.hideBreakdown) {
         Object.keys(sub.terms).forEach(t => {
-          if (sub.terms[t]) {
+          const isTermHidden = typeof cs.hideBreakdown === 'boolean' 
+            ? cs.hideBreakdown 
+            : (cs.hideBreakdown[t] || 
+               (t === 'PRELIMS' && cs.hideBreakdown['Term 1']) ||
+               (t === 'MIDTERM' && cs.hideBreakdown['Term 2']) ||
+               (t === 'PRE-FINALS' && cs.hideBreakdown['Term 3']) ||
+               (t === 'FINALS' && cs.hideBreakdown['Term 4']));
+          if (isTermHidden && sub.terms[t]) {
             delete sub.terms[t].writtenWorks;
+            delete sub.terms[t].quizzes;
             delete sub.terms[t].performanceTasks;
             delete sub.terms[t].exams;
             if (sub.terms[t].summary) {
@@ -702,10 +1110,25 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
     // Apply global visible terms filter
     const vt = settingsConfig.visibleTerms || {};
     const releaseFinals = cs.releaseFinals || {};
+    const termAliases = {
+      'PRELIMS': 'Term 1',
+      'MIDTERM': 'Term 2',
+      'PRE-FINALS': 'Term 3',
+      'FINALS': 'Term 4',
+      'Term 1': 'PRELIMS',
+      'Term 2': 'MIDTERM',
+      'Term 3': 'PRE-FINALS',
+      'Term 4': 'FINALS'
+    };
+
     Object.keys(sub.terms).forEach(t => { 
-      if (vt[t] === false) {
+      const alias = termAliases[t];
+      const isVisible = vt[t] !== false && (alias ? vt[alias] !== false : true);
+      const isReleased = releaseFinals[t] !== false && (alias ? releaseFinals[alias] !== false : true);
+
+      if (!isVisible) {
         delete sub.terms[t]; 
-      } else if (releaseFinals[t] === false) {
+      } else if (!isReleased) {
         if (sub.terms[t].summary) {
           sub.terms[t].summary.transmutedGrade = null;
           sub.terms[t].summary.initialGrade = null;
@@ -715,10 +1138,22 @@ app.get('/api/student/grades', requireAuth(['student']), (req, res) => {
     });
 
     if (sub.gradingSummary && Object.keys(releaseFinals).length > 0) {
-      if (releaseFinals['Term 1'] === false) sub.gradingSummary.term1 = null;
-      if (releaseFinals['Term 2'] === false) sub.gradingSummary.term2 = null;
-      if (releaseFinals['Term 3'] === false) sub.gradingSummary.term3 = null;
-      if (releaseFinals['Term 4'] === false) sub.gradingSummary.term4 = null;
+      if (releaseFinals['Term 1'] === false || releaseFinals['PRELIMS'] === false) {
+        sub.gradingSummary.term1 = null;
+        if (sub.gradingSummary.prelims) sub.gradingSummary.prelims = null;
+      }
+      if (releaseFinals['Term 2'] === false || releaseFinals['MIDTERM'] === false) {
+        sub.gradingSummary.term2 = null;
+        if (sub.gradingSummary.midterm) sub.gradingSummary.midterm = null;
+      }
+      if (releaseFinals['Term 3'] === false || releaseFinals['PRE-FINALS'] === false) {
+        sub.gradingSummary.term3 = null;
+        if (sub.gradingSummary.preFinals) sub.gradingSummary.preFinals = null;
+      }
+      if (releaseFinals['Term 4'] === false || releaseFinals['FINALS'] === false) {
+        sub.gradingSummary.term4 = null;
+        if (sub.gradingSummary.finals) sub.gradingSummary.finals = null;
+      }
       
       if (Object.values(releaseFinals).some(val => val === false)) {
          sub.gradingSummary.finalGrade = null;
@@ -773,11 +1208,10 @@ app.post('/api/teacher/upload', requireAuth(['teacher']), uploadGrade.single('gr
   if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
   try {
     const wb = XLSX.readFile(req.file.path);
-    const required = ['Data Input', 'Term 1', 'Term 2', 'Term 3'];
-    const missing = required.filter(s => !wb.Sheets[s]);
-    if (missing.length > 0) {
+    const type = detectWorkbookType(wb);
+    if (!type) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: `Invalid file. Missing sheets: ${missing.join(', ')}` });
+      return res.status(400).json({ error: 'Invalid file format. Uploaded file must be either High School template (Data Input, Term 1, etc.) or Tertiary template (Settings, Input, PRELIMS, etc.).' });
     }
     const fname = req.file.filename;
     const historyPath = path.join(GRADES_HISTORY_DIR, `${Date.now()}_${fname}`);
@@ -786,6 +1220,7 @@ app.post('/api/teacher/upload', requireAuth(['teacher']), uploadGrade.single('gr
     if (!teachersConfig[teacherId].files) teachersConfig[teacherId].files = [];
     if (!teachersConfig[teacherId].files.includes(fname)) teachersConfig[teacherId].files.push(fname);
     saveJSON(TEACHERS_FILE, teachersConfig);
+    loadAllData();
     res.json({ success: true, message: 'Grades uploaded successfully.' });
   } catch (err) {
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
@@ -815,19 +1250,26 @@ app.put('/api/teacher/class/:filename/batch-update', requireAuth(['teacher']), a
     const XLSX = require('xlsx');
     const fpath = path.join(GRADES_DIR, filename);
     const workbook = await XlsxPopulate.fromFileAsync(fpath);
+    const isTertiary = !!workbook.sheet('Input') && !!workbook.sheet('Settings');
 
     for (const studentNo of Object.keys(updatesByStudent)) {
       const updates = updatesByStudent[studentNo];
       for (const update of updates) {
-        const sheet = workbook.sheet(update.termName);
+        const targetSheetName = (isTertiary && update.termName !== 'Attendance') ? 'Input' : update.termName;
+        const sheet = workbook.sheet(targetSheetName);
         if (sheet) {
           const c = sheet.cell(update.row + 1, update.col + 1);
           if (update.termName === 'Attendance') {
             c.value((update.value === '' || update.value === null) ? null : update.value);
           } else {
             c.value((update.value === '' || update.value === null) ? null : Number(update.value));
-            if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
-            if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+            if (update.hps !== undefined && update.hps !== null && update.hps !== '') {
+              sheet.cell(6, update.col + 1).value(Number(update.hps));
+            }
+            if (update.label) {
+              const labelRow = isTertiary ? 5 : 8;
+              sheet.cell(labelRow, update.col + 1).value(update.label);
+            }
           }
         }
       }
@@ -856,13 +1298,16 @@ app.get('/api/teacher/class/:filename', requireAuth(['teacher']), (req, res) => 
   for (const [studentNo, data] of Object.entries(studentsMap)) {
     const sub = data.subjects.find(s => s.info.fileName === filename);
     if (!sub) continue;
+    const termsSummary = {};
+    Object.keys(sub.terms || {}).forEach(t => {
+      termsSummary[t] = {
+        transmutedGrade: sub.terms[t].summary?.transmutedGrade,
+        status: sub.terms[t].summary?.status
+      };
+    });
     classStudents.push({
       studentNo, name: data.name, gradingSummary: sub.gradingSummary, attendance: sub.attendance,
-      terms: {
-        'Term 1': sub.terms['Term 1'] ? { transmutedGrade: sub.terms['Term 1'].summary?.transmutedGrade, status: sub.terms['Term 1'].summary?.status } : null,
-        'Term 2': sub.terms['Term 2'] ? { transmutedGrade: sub.terms['Term 2'].summary?.transmutedGrade, status: sub.terms['Term 2'].summary?.status } : null,
-        'Term 3': sub.terms['Term 3'] ? { transmutedGrade: sub.terms['Term 3'].summary?.transmutedGrade, status: sub.terms['Term 3'].summary?.status } : null,
-      }
+      terms: termsSummary
     });
   }
   classStudents.sort((a, b) => a.name.localeCompare(b.name));
@@ -896,6 +1341,59 @@ app.get('/api/teacher/class/:filename/headers', requireAuth(['teacher']), (req, 
     const XLSX = require('xlsx');
     const fpath = path.join(GRADES_DIR, filename);
     const wb = XLSX.readFile(fpath);
+    const type = detectWorkbookType(wb);
+
+    if (type === 'tertiary') {
+      const wsInput = wb.Sheets['Input'];
+      const termDefs = [
+        { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16 },
+        { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29 },
+        { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42 },
+        { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55 }
+      ];
+      const columns = {};
+      const attendance = [];
+
+      termDefs.forEach(td => {
+        const pt = td.ptCols.map((c, i) => {
+          const aHps = XLSX.utils.encode_cell({ r: 5, c });
+          const aLbl = XLSX.utils.encode_cell({ r: 4, c });
+          return { col: c, hps: wsInput[aHps]?.v ?? null, label: String(wsInput[aLbl]?.v || `PRC${i + 1}`) };
+        });
+        const ww = td.quizCols.map((c, i) => {
+          const aHps = XLSX.utils.encode_cell({ r: 5, c });
+          const aLbl = XLSX.utils.encode_cell({ r: 4, c });
+          return { col: c, hps: wsInput[aHps]?.v ?? null, label: String(wsInput[aLbl]?.v || `Q${i + 1}`) };
+        });
+        const exam = [{
+          col: td.examCol,
+          key: 'EX',
+          hps: wsInput[XLSX.utils.encode_cell({ r: 5, c: td.examCol })]?.v ?? null,
+          label: String(wsInput[XLSX.utils.encode_cell({ r: 4, c: td.examCol })]?.v || 'Major Exam')
+        }];
+        columns[td.name] = { ww, pt, exam };
+
+        const wsTerm = wb.Sheets[td.name];
+        if (wsTerm) {
+          let curMonth = '';
+          for (let c = 6; c <= 20; c++) {
+            const m = wsTerm[XLSX.utils.encode_cell({ r: 2, c })]?.v;
+            if (m) curMonth = String(m).trim();
+            const d = wsTerm[XLSX.utils.encode_cell({ r: 3, c })]?.v;
+            if (d && !isNaN(d)) {
+              attendance.push({
+                col: c,
+                dateStr: curMonth ? `${curMonth} ${d}` : `Day ${d}`,
+                term: td.name
+              });
+            }
+          }
+        }
+      });
+
+      return res.json({ success: true, columns, attendance, templateType: 'tertiary' });
+    }
+
     const terms = ['Term 1', 'Term 2', 'Term 3', 'Term 4'];
     const columns = {};
     
@@ -934,7 +1432,7 @@ app.get('/api/teacher/class/:filename/headers', requireAuth(['teacher']), (req, 
       }
     }
     
-    res.json({ success: true, columns, attendance });
+    res.json({ success: true, columns, attendance, templateType: 'high_school' });
   } catch (err) {
     console.error('HEADERS ENDPOINT ERROR:', err);
     res.status(500).json({ error: err.message });
@@ -959,55 +1457,83 @@ app.put('/api/teacher/class/:filename/headers', requireAuth(['teacher']), async 
     const fpath = path.join(GRADES_DIR, filename);
     const workbook = await XlsxPopulate.fromFileAsync(fpath);
 
-    if (updates && updates.length > 0) {
-      for (const update of updates) {
-        const sheet = workbook.sheet(update.termName);
-        if (sheet) {
+    const isTertiary = !!workbook.sheet('Input') && !!workbook.sheet('Settings');
+
+    if (isTertiary) {
+      const inputSheet = workbook.sheet('Input');
+      if (updates && updates.length > 0 && inputSheet) {
+        for (const update of updates) {
           if (update.hps === null || update.hps === '') {
-            sheet.cell(6, update.col + 1).value(null);
-            if (update.col !== 45 && update.col !== 46 && update.col !== 47) {
-              sheet.cell(7, update.col + 1).value(null);
-              sheet.cell(8, update.col + 1).value(null);
-              for (let r = 8; r <= 71; r++) {
-                sheet.cell(r, update.col + 1).value(null);
-              }
-            }
+            inputSheet.cell(6, update.col + 1).value(null);
           } else {
-            sheet.cell(6, update.col + 1).value(Number(update.hps));
-            if (update.dateStr) {
-               const d = new Date(update.dateStr);
-               if (!isNaN(d.getTime())) sheet.cell(7, update.col + 1).value(XlsxPopulate.dateToNumber(d));
-            } else if (update.dateStr === '') {
-               sheet.cell(7, update.col + 1).value(null);
-            }
-            if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+            inputSheet.cell(6, update.col + 1).value(Number(update.hps));
+            if (update.label) inputSheet.cell(5, update.col + 1).value(update.label);
           }
         }
       }
-    }
-
-    if (attendanceUpdates && attendanceUpdates.length > 0) {
-      const attSheet = workbook.sheet('Attendance');
-      if (attSheet) {
+      if (attendanceUpdates && attendanceUpdates.length > 0) {
         for (const update of attendanceUpdates) {
-          if (update.dateStr === null || update.dateStr === '') {
-             attSheet.cell(3, update.col + 1).value(null);
-             attSheet.cell(4, update.col + 1).value(null);
-             attSheet.cell(5, update.col + 1).value(null);
-             for (let r = 6; r <= 70; r++) {
-               attSheet.cell(r, update.col + 1).value(null);
-             }
-          } else {
-             const d = new Date(update.dateStr);
-             if (!isNaN(d.getTime())) {
-               attSheet.cell(3, update.col + 1).value(XlsxPopulate.dateToNumber(d));
-               attSheet.cell(4, update.col + 1).value(XlsxPopulate.dateToNumber(d));
-             }
-             if (update.term === '') {
-                attSheet.cell(5, update.col + 1).value(null);
-             } else if (update.term) {
-                attSheet.cell(5, update.col + 1).value(update.term);
-             }
+          const sheet = workbook.sheet(update.term || 'PRELIMS');
+          if (sheet) {
+            if (update.dateStr === null || update.dateStr === '') {
+              sheet.cell(4, update.col + 1).value(null);
+            } else {
+              sheet.cell(4, update.col + 1).value(update.dateStr);
+            }
+          }
+        }
+      }
+    } else {
+      if (updates && updates.length > 0) {
+        for (const update of updates) {
+          const sheet = workbook.sheet(update.termName);
+          if (sheet) {
+            if (update.hps === null || update.hps === '') {
+              sheet.cell(6, update.col + 1).value(null);
+              if (update.col !== 45 && update.col !== 46 && update.col !== 47) {
+                sheet.cell(7, update.col + 1).value(null);
+                sheet.cell(8, update.col + 1).value(null);
+                for (let r = 8; r <= 71; r++) {
+                  sheet.cell(r, update.col + 1).value(null);
+                }
+              }
+            } else {
+              sheet.cell(6, update.col + 1).value(Number(update.hps));
+              if (update.dateStr) {
+                 const d = new Date(update.dateStr);
+                 if (!isNaN(d.getTime())) sheet.cell(7, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+              } else if (update.dateStr === '') {
+                 sheet.cell(7, update.col + 1).value(null);
+              }
+              if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+            }
+          }
+        }
+      }
+
+      if (attendanceUpdates && attendanceUpdates.length > 0) {
+        const attSheet = workbook.sheet('Attendance');
+        if (attSheet) {
+          for (const update of attendanceUpdates) {
+            if (update.dateStr === null || update.dateStr === '') {
+               attSheet.cell(3, update.col + 1).value(null);
+               attSheet.cell(4, update.col + 1).value(null);
+               attSheet.cell(5, update.col + 1).value(null);
+               for (let r = 6; r <= 70; r++) {
+                 attSheet.cell(r, update.col + 1).value(null);
+               }
+            } else {
+               const d = new Date(update.dateStr);
+               if (!isNaN(d.getTime())) {
+                 attSheet.cell(3, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+                 attSheet.cell(4, update.col + 1).value(XlsxPopulate.dateToNumber(d));
+               }
+               if (update.term === '') {
+                  attSheet.cell(5, update.col + 1).value(null);
+               } else if (update.term) {
+                  attSheet.cell(5, update.col + 1).value(update.term);
+               }
+            }
           }
         }
       }
@@ -1042,7 +1568,9 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
     const wbSheetJS = XLSX.readFile(fpath);
 
     for (const update of updates) {
-      const sheet = workbook.sheet(update.termName);
+      const isTertiary = !!workbook.sheet('Input') && !!workbook.sheet('Settings');
+      const targetSheetName = (isTertiary && update.termName !== 'Attendance') ? 'Input' : update.termName;
+      const sheet = workbook.sheet(targetSheetName);
       if (sheet) {
         const c = sheet.cell(update.row + 1, update.col + 1);
         if (update.termName === 'Attendance') {
@@ -1050,7 +1578,7 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
         } else {
           c.value((update.value === '' || update.value === null) ? null : Number(update.value));
           if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
-          if (update.label) sheet.cell(8, update.col + 1).value(update.label);
+          if (update.label) sheet.cell(isTertiary ? 5 : 8, update.col + 1).value(update.label);
         }
         
         if (studentsMap[studentNo]) {
@@ -1254,11 +1782,10 @@ app.post('/api/admin/templates/upload', requireAuth(['admin']), uploadTemplate.s
   if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
   try {
     const wb = XLSX.readFile(req.file.path);
-    const required = ['Data Input', 'Term 1', 'Term 2', 'Term 3'];
-    const missing = required.filter(s => !wb.Sheets[s]);
-    if (missing.length > 0) {
+    const type = detectWorkbookType(wb);
+    if (!type) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ error: `Invalid template. Missing sheets: ${missing.join(', ')}` });
+      return res.status(400).json({ error: 'Invalid template format. Must be either High School template (Data Input, Term 1, etc.) or Tertiary template (Settings, Input, PRELIMS, etc.).' });
     }
     const finalPath = path.join(TEMPLATES_DIR, req.file.filename);
     if (fs.existsSync(finalPath) && finalPath !== req.file.path) {
@@ -1412,15 +1939,17 @@ app.get('/api/admin/statistics', requireAuth(['admin']), (req, res) => {
       const key = `${sub.info.subject}||${sub.info.section}`;
       if (!subjectMap[key]) subjectMap[key] = { ...sub.info, students: [] };
       const gs = sub.gradingSummary || {};
-      const fg = gs.finalGrade && gs.finalGrade !== '--' ? parseInt(gs.finalGrade) : null;
+      const rawFg = (gs.finalGrade && gs.finalGrade !== '--' && gs.finalGrade !== '-') ? parseFloat(gs.finalGrade) : null;
+      const fg = !isNaN(rawFg) ? rawFg : null;
       subjectMap[key].students.push({ studentNo: s.studentNo, name: s.name, finalGrade: fg, remarks: gs.remarks || null });
     });
   });
 
   const subjectStats = Object.values(subjectMap).map(entry => {
+    const isTertiary = entry.templateType === 'tertiary';
     const graded = entry.students.filter(s => s.finalGrade !== null);
-    const avg = graded.length > 0 ? Math.round(graded.reduce((sum, s) => sum + s.finalGrade, 0) / graded.length) : null;
-    const passed = graded.filter(s => s.finalGrade >= 75).length;
+    const avg = graded.length > 0 ? (isTertiary ? round2(graded.reduce((sum, s) => sum + s.finalGrade, 0) / graded.length) : Math.round(graded.reduce((sum, s) => sum + s.finalGrade, 0) / graded.length)) : null;
+    const passed = graded.filter(s => isTertiary ? s.finalGrade <= 3.0 : s.finalGrade >= 75).length;
     return { subject: entry.subject, section: entry.section, gradeLevel: entry.gradeLevel, instructor: entry.instructor, totalStudents: entry.students.length, gradedStudents: graded.length, average: avg, passed, failed: graded.length - passed, passRate: graded.length > 0 ? Math.round((passed / graded.length) * 100) : null };
   });
 

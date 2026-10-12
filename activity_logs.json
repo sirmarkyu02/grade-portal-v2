@@ -1,5 +1,325 @@
 [
   {
+    "id": "d67c755a-5faa-4601-ac8e-6d740dc4ccc0",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-11T23:57:56.400Z"
+  },
+  {
+    "id": "69e30519-c1a7-4700-aaf5-28d83c54fa99",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-11T23:57:32.679Z"
+  },
+  {
+    "id": "33903b88-b007-43fa-9ee5-7b20aefdfaa6",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-11T23:54:42.868Z"
+  },
+  {
+    "id": "fd8de0d5-d756-4f14-9e6c-21bc2f5d3dbb",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Update Settings",
+    "details": "Updated system settings",
+    "timestamp": "2026-10-11T23:54:33.943Z"
+  },
+  {
+    "id": "0a3f2599-018e-4cb6-82bb-3cbd87747a30",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T23:54:06.630Z"
+  },
+  {
+    "id": "dae00286-251d-4244-b31d-cebd5877b2f8",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-11T23:52:26.392Z"
+  },
+  {
+    "id": "e4042d9a-c197-482b-848d-f00af2efdb1b",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T16:35:00.158Z"
+  },
+  {
+    "id": "1efb71ea-ba28-4dab-ab52-7e95cb462625",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T14:59:49.398Z"
+  },
+  {
+    "id": "bc1bb483-d1d5-4066-b46c-fb8f6827c246",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T14:31:52.047Z"
+  },
+  {
+    "id": "0af6be49-3272-48d8-87ad-156a6b0545c0",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T14:30:30.305Z"
+  },
+  {
+    "id": "83867577-fef7-4f04-9ae8-7c18db5d464d",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T14:22:55.757Z"
+  },
+  {
+    "id": "02131420-241f-4297-9308-699fe83506c3",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-11T13:46:57.755Z"
+  },
+  {
+    "id": "35272116-a27c-4c9b-949c-3cca226d5fad",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-11T13:11:39.707Z"
+  },
+  {
+    "id": "c856f6e3-e52c-4153-a39f-b873406d8d09",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-11T13:11:32.792Z"
+  },
+  {
+    "id": "f8f41aba-5b42-4043-a552-16d1fa864a91",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T13:03:01.127Z"
+  },
+  {
+    "id": "31f68485-9c67-4756-97be-4ded99f21775",
+    "userId": "02000367567",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T12:57:07.231Z"
+  },
+  {
+    "id": "81825996-55a9-4675-926b-c26ba6481a0c",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000367567",
+    "timestamp": "2026-10-11T12:53:37.256Z"
+  },
+  {
+    "id": "56262205-e76c-4aed-b9d2-9b730d291fae",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-11T12:53:21.451Z"
+  },
+  {
+    "id": "a5bc2011-cf80-4d0d-9921-d4c80981a3ce",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000504031",
+    "timestamp": "2026-10-11T12:52:57.860Z"
+  },
+  {
+    "id": "5f003afe-ffe5-4b04-bf12-6659fc2ba03b",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T12:52:37.284Z"
+  },
+  {
+    "id": "1b657953-7021-4ed0-80e0-ce25e37a23db",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T12:48:03.131Z"
+  },
+  {
+    "id": "afc03a44-f624-43d4-b5bf-6a016cb19bb3",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-11T12:47:56.359Z"
+  },
+  {
+    "id": "3589ab5f-f779-4519-bd3c-d578b4a536ae",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-11T12:47:19.668Z"
+  },
+  {
+    "id": "4caffbd1-14f4-4a4e-a77a-46838298c50d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T12:46:30.157Z"
+  },
+  {
+    "id": "681838cc-999c-493e-a46e-c83df6564680",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:53:35.971Z"
+  },
+  {
+    "id": "26e6249c-a8d5-46bc-ab21-1548b4bc9397",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:52:52.330Z"
+  },
+  {
+    "id": "a351249e-e72b-4c3c-9853-b411dd4047ab",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:52:52.319Z"
+  },
+  {
+    "id": "7cd27769-e790-4e81-8cb9-166135d7e0ea",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:52:52.285Z"
+  },
+  {
+    "id": "75118524-7b8b-462c-abb3-0b3e2b0e1266",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:45:52.311Z"
+  },
+  {
+    "id": "5f5c28fb-dd4c-4bb6-85d4-8d5a9ef95745",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:44:45.272Z"
+  },
+  {
+    "id": "7dccc35a-a058-4426-aa36-fdae4952eecc",
+    "userId": "02000500651",
+    "role": "student",
+    "action": "Login",
+    "details": "Student logged in",
+    "timestamp": "2026-10-11T07:31:37.321Z"
+  },
+  {
+    "id": "baea0309-e087-46a1-897a-b5d82fdf07aa",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T07:27:22.177Z"
+  },
+  {
+    "id": "ddec88a4-ef46-4c80-89c0-ec440b792c46",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-11T07:26:51.938Z"
+  },
+  {
+    "id": "ac4dfa3e-38f6-49d8-ba8d-bf920741f0ec",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of student ALEGRE, JEOFERSON",
+    "timestamp": "2026-10-11T04:35:39.038Z"
+  },
+  {
+    "id": "bd19da4b-cfc8-4166-a2b0-edee1f53bb47",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student ALEGRE, JEOFERSON (02000503190)",
+    "timestamp": "2026-10-11T03:18:05.230Z"
+  },
+  {
+    "id": "9f450636-68a3-498f-9ad8-3e1ecf881b9f",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate Exit",
+    "details": "Exited impersonation of student ALEGRE, JEOFERSON",
+    "timestamp": "2026-10-11T03:17:58.075Z"
+  },
+  {
+    "id": "f0cdb6a3-656a-427e-8fff-9cf22e6cb8d7",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student ALEGRE, JEOFERSON (02000503190)",
+    "timestamp": "2026-10-11T03:17:39.403Z"
+  },
+  {
+    "id": "32b6cbf6-aba7-40bd-b22a-7c33c446ce6d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T03:12:27.201Z"
+  },
+  {
+    "id": "fff5e6e2-660b-4f12-8d7b-66a31964d348",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student ALEGRE, JEOFERSON (02000503190)",
+    "timestamp": "2026-10-11T03:11:33.767Z"
+  },
+  {
+    "id": "f895287a-803f-431c-a1fe-f07ba4b235ad",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-11T02:16:51.940Z"
+  },
+  {
     "id": "e02cdb39-e5c2-4dc0-a2c6-b90c1d443316",
     "userId": "sirmarkyu",
     "role": "teacher",

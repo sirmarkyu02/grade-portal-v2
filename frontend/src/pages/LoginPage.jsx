@@ -119,7 +119,7 @@ export default function LoginPage() {
                 <input
                   className="form-input has-icon"
                   type="text"
-                  placeholder="e.g. 2024000001"
+                  placeholder="e.g. 02000500651"
                   value={userId}
                   onChange={e => { setUserId(e.target.value); setError(''); }}
                   autoCapitalize="none"
@@ -169,8 +169,8 @@ export default function LoginPage() {
 
           <div style={{ marginTop: 24, padding: 16, background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)' }}>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.7, fontWeight: 500 }}>
-              <strong>Default password:</strong> your Student Number (e.g. 2024000001).<br />
-              You'll be asked to change it on your first login.
+              <strong>Default password:</strong> your Student Number (e.g. 02000500651).<br />
+              You'll be asked to set a personalized password on your first login.
             </p>
           </div>
 

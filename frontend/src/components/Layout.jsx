@@ -168,10 +168,37 @@ export function PageHeader({ title, subtitle, actions }) {
 
 export function GradePill({ grade, size = 'sm' }) {
   const sizeClass = size === 'lg' ? 'grade-pill-lg' : '';
-  if (!grade && grade !== 0) return <span className={`grade-pill grade-empty ${sizeClass}`}>—</span>;
+  if (grade === null || grade === undefined || grade === '' || grade === '—' || grade === '-') {
+    return <span className={`grade-pill grade-empty ${sizeClass}`}>—</span>;
+  }
+  const str = String(grade).trim().toUpperCase();
+  if (str === 'INC') {
+    return <span className={`grade-pill grade-d ${sizeClass}`}>INC</span>;
+  }
+  if (str === 'DRP') {
+    return <span className={`grade-pill grade-f ${sizeClass}`}>DRP</span>;
+  }
   const g = Number(grade);
-  const cls = g >= 90 ? 'grade-a' : g >= 80 ? 'grade-b' : g >= 75 ? 'grade-c' : g >= 65 ? 'grade-d' : 'grade-f';
-  return <span className={`grade-pill ${cls} ${sizeClass}`}>{grade}</span>;
+  if (isNaN(g)) {
+    return <span className={`grade-pill grade-empty ${sizeClass}`}>{grade}</span>;
+  }
+
+  let cls = 'grade-f';
+  let displayVal = grade;
+  if (g <= 5.0) {
+    // Tertiary / College numerical rating (1.00 - 5.00, 1.00 is highest, 3.00 is passing)
+    displayVal = g.toFixed(2);
+    if (g <= 1.75) cls = 'grade-a';
+    else if (g <= 2.50) cls = 'grade-b';
+    else if (g <= 3.00) cls = 'grade-c';
+    else if (g < 5.00) cls = 'grade-d';
+    else cls = 'grade-f';
+  } else {
+    // High School percentage rating (60 - 100, 75 is passing)
+    cls = g >= 90 ? 'grade-a' : g >= 80 ? 'grade-b' : g >= 75 ? 'grade-c' : g >= 65 ? 'grade-d' : 'grade-f';
+  }
+
+  return <span className={`grade-pill ${cls} ${sizeClass}`}>{displayVal}</span>;
 }
 
 export function StatusBadge({ status }) {
@@ -179,8 +206,10 @@ export function StatusBadge({ status }) {
   const s = String(status).toLowerCase();
   const isPassed = s.includes('pass') || s === 'passed';
   const isHidden = s.includes('hidden') || s.includes('tba') || s.includes('progress');
-  const badgeClass = isPassed ? 'badge-success' : isHidden ? 'badge-neutral' : 'badge-error';
-  const icon = isPassed ? '✓' : isHidden ? '🕒' : '✕';
+  const isIncomplete = s.includes('incomplete') || s === 'inc';
+  const isDropped = s.includes('dropped') || s === 'drp';
+  const badgeClass = isPassed ? 'badge-success' : isHidden ? 'badge-neutral' : isIncomplete ? 'badge-warning' : 'badge-error';
+  const icon = isPassed ? '✓' : isHidden ? '🕒' : isIncomplete ? '⚠️' : '✕';
   return (
     <span className={`badge ${badgeClass}`}>
       {icon} {status}
