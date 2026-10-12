@@ -479,5 +479,14 @@
     },
     "createdAt": 1791736500125,
     "lastActive": 1791736500213
+  },
+  "093cf113-3b55-44e9-b866-aed9ba743986": {
+    "userId": "02000498439",
+    "role": "student",
+    "meta": {
+      "name": "ABENDANTE, CARL YUAN"
+    },
+    "createdAt": 1791803399130,
+    "lastActive": 1791803399130
   }
 }

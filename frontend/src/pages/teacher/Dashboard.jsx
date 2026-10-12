@@ -1704,35 +1704,53 @@ function SubjectGrades({ subject }) {
       {term && (
         <>
           {/* Summary */}
-          {(() => {
-            const isTertiary = subject.info?.templateType === 'tertiary';
-            const hasInitial = term.summary?.initialGrade !== undefined && term.summary?.initialGrade !== null && String(term.summary.initialGrade).trim() !== '';
-            const fallbackInitial = ((term.summary?.wwWS || 0) + (term.summary?.ptWS || 0) + (term.summary?.examWS || 0));
-            const hasAnyWS = (term.summary?.wwWS !== null && term.summary?.wwWS !== undefined) ||
-                             (term.summary?.ptWS !== null && term.summary?.ptWS !== undefined) ||
-                             (term.summary?.examWS !== null && term.summary?.examWS !== undefined);
-            const displayInitial = hasInitial ? term.summary.initialGrade : (hasAnyWS ? fallbackInitial : null);
+          {subject.info?.templateType === 'tertiary' ? (
+            (() => {
+              const hasInitial = term.summary?.initialGrade !== undefined && term.summary?.initialGrade !== null && String(term.summary.initialGrade).trim() !== '';
+              const fallbackInitial = ((term.summary?.wwWS || 0) + (term.summary?.ptWS || 0) + (term.summary?.examWS || 0));
+              const hasAnyWS = (term.summary?.wwWS !== null && term.summary?.wwWS !== undefined) ||
+                               (term.summary?.ptWS !== null && term.summary?.ptWS !== undefined) ||
+                               (term.summary?.examWS !== null && term.summary?.examWS !== undefined);
+              const displayInitial = hasInitial ? term.summary.initialGrade : (hasAnyWS ? fallbackInitial : null);
 
-            return (
-              <div className="grid-5">
-                {[
-                  { label: isTertiary ? 'Quizzes (20% Wt)' : 'Written Works', value: term.summary?.wwWS !== null && term.summary?.wwWS !== undefined ? `${Number(term.summary.wwWS).toFixed(2)}%` : '—', icon: '📝' },
-                  { label: isTertiary ? 'PT / Lab (30% Wt)' : 'Performance Tasks', value: term.summary?.ptWS !== null && term.summary?.ptWS !== undefined ? `${Number(term.summary.ptWS).toFixed(2)}%` : '—', icon: '🎯' },
-                  { label: isTertiary ? 'Major Exam (50% Wt)' : 'Exams', value: term.summary?.examWS !== null && term.summary?.examWS !== undefined ? `${Number(term.summary.examWS).toFixed(2)}%` : '—', icon: '📋' },
-                  { label: 'Initial Grade', value: displayInitial !== null && displayInitial !== undefined ? `${Number(displayInitial).toFixed(2)}%` : '—', icon: '📊', isInitial: true },
-                  { label: isTertiary ? 'Term Rating (EQV)' : 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
-                ].map((s, i) => (
-                  <div key={i} className="stat-card stat-card-sm" style={s.isInitial ? { background: 'var(--grad-soft)', border: '1px solid var(--brand-200)' } : s.isGrade ? { background: 'var(--grad-soft)', border: '1px solid var(--violet-200)' } : {}}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                      <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: s.isInitial ? 'var(--brand-700)' : s.isGrade ? 'var(--violet-700)' : 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
+              return (
+                <div className="grid-5">
+                  {[
+                    { label: 'Quizzes (20% Wt)', value: term.summary?.wwWS !== null && term.summary?.wwWS !== undefined ? `${Number(term.summary.wwWS).toFixed(2)}%` : '—', icon: '📝' },
+                    { label: 'PT / Lab (30% Wt)', value: term.summary?.ptWS !== null && term.summary?.ptWS !== undefined ? `${Number(term.summary.ptWS).toFixed(2)}%` : '—', icon: '🎯' },
+                    { label: 'Major Exam (50% Wt)', value: term.summary?.examWS !== null && term.summary?.examWS !== undefined ? `${Number(term.summary.examWS).toFixed(2)}%` : '—', icon: '📋' },
+                    { label: 'Initial Grade', value: displayInitial !== null && displayInitial !== undefined ? `${Number(displayInitial).toFixed(2)}%` : '—', icon: '📊', isInitial: true },
+                    { label: 'Term Rating (EQV)', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
+                  ].map((s, i) => (
+                    <div key={i} className="stat-card stat-card-sm" style={s.isInitial ? { background: 'var(--grad-soft)', border: '1px solid var(--brand-200)' } : s.isGrade ? { background: 'var(--grad-soft)', border: '1px solid var(--violet-200)' } : {}}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: s.isInitial ? 'var(--brand-700)' : s.isGrade ? 'var(--violet-700)' : 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
+                      </div>
+                      {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem', color: s.isInitial ? 'var(--brand-700)' : 'inherit' }}>{s.value}</p>}
                     </div>
-                    {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem', color: s.isInitial ? 'var(--brand-700)' : 'inherit' }}>{s.value}</p>}
+                  ))}
+                </div>
+              );
+            })()
+          ) : (
+            <div className="grid-4">
+              {[
+                { label: 'Written Works', value: term.summary?.wwWS !== null ? `${term.summary.wwWS?.toFixed(2) ?? '—'}` : '—', icon: '📝' },
+                { label: 'Performance Tasks', value: term.summary?.ptWS !== null ? `${term.summary.ptWS?.toFixed(2) ?? '—'}` : '—', icon: '🎯' },
+                { label: 'Exams', value: term.summary?.examWS !== null ? `${term.summary.examWS?.toFixed(2) ?? '—'}` : '—', icon: '📋' },
+                { label: 'Term Grade', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
+              ].map((s, i) => (
+                <div key={i} className="stat-card stat-card-sm">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: '1.25rem', flexShrink: 0 }}>{s.icon}</span>
+                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', lineHeight: 1.2, minWidth: 0, wordWrap: 'break-word' }}>{s.label}</p>
                   </div>
-                ))}
-              </div>
-            );
-          })()}
+                  {s.isGrade ? <><div className="no-print"><GradePill grade={s.value} size="lg" /></div><p className="print-only stat-print-val">{s.value}</p></> : <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '1.25rem' }}>{s.value}</p>}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Status banner if present */}
           {term.summary?.status && (
