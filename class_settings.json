@@ -56,5 +56,16 @@
     "releaseFinals": {
       "Term 2": false
     }
+  },
+  "11 ASSH & STEM - Life & Career Skills.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {
+      "PRELIMS": true
+    },
+    "blockedStudents": []
   }
 }
