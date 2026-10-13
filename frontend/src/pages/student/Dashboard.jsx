@@ -1408,12 +1408,12 @@ function CollegeOverviewPage({ studentData, profile }) {
               const isTertiarySub = sub.info?.templateType === 'tertiary';
               const termsList = isTertiarySub
                 ? [{ key: 'term1', label: 'PRE' }, { key: 'term2', label: 'MID' }, { key: 'term3', label: 'PF' }, { key: 'term4', label: 'FIN' }]
-                : [{ key: 'term1', label: 'T1' }, { key: 'term2', label: 'T2' }, { key: 'term3', label: 'T3' }, { key: 'term4', label: 'T4' }];
+                : [{ key: 'term1', label: 'T1' }, { key: 'term2', label: 'T2' }, { key: 'term3', label: 'T3' }];
 
               return (
                 <div 
                   key={i} 
-                  className="card student-subject-card" 
+                  className="card student-subject-card collegiate-course-card" 
                   style={{ padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, cursor: 'pointer' }}
                   onClick={() => navigate('/student/grades')}
                 >
@@ -1500,7 +1500,7 @@ function CollegeSubjectPage({ studentData }) {
             {subjects.map((sub, i) => (
               <div 
                 key={i} 
-                className="card student-subject-card" 
+                className="card student-subject-card collegiate-course-card" 
                 style={{ padding: 20, cursor: 'pointer', transition: 'all 0.2s' }} 
                 onClick={() => setSelected(i)}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}

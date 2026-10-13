@@ -662,15 +662,14 @@ function ClassSettingsModal({ classInfo, settings, onClose, onSaved }) {
 
   const isTertiary = classInfo?.templateType === 'tertiary';
   const terms = isTertiary ? [
-    { id: 1, name: 'PRELIMS', hideKey: 'hideTerm1', termKey: 'Term 1' },
-    { id: 2, name: 'MIDTERM', hideKey: 'hideTerm2', termKey: 'Term 2' },
-    { id: 3, name: 'PRE-FINALS', hideKey: 'hideTerm3', termKey: 'Term 3' },
-    { id: 4, name: 'FINALS', hideKey: 'hideTerm4', termKey: 'Term 4' }
+    { id: 1, name: 'PRELIMS', hideKey: 'hideTerm1', termKey: 'PRELIMS' },
+    { id: 2, name: 'MIDTERM', hideKey: 'hideTerm2', termKey: 'MIDTERM' },
+    { id: 3, name: 'PRE-FINALS', hideKey: 'hideTerm3', termKey: 'PRE-FINALS' },
+    { id: 4, name: 'FINALS', hideKey: 'hideTerm4', termKey: 'FINALS' }
   ] : [
-    { id: 1, name: 'Term 1', hideKey: 'hideTerm1', termKey: 'PRELIMS' },
-    { id: 2, name: 'Term 2', hideKey: 'hideTerm2', termKey: 'MIDTERM' },
-    { id: 3, name: 'Term 3', hideKey: 'hideTerm3', termKey: 'PRE-FINALS' },
-    { id: 4, name: 'Term 4', hideKey: 'hideTerm4', termKey: 'FINALS' }
+    { id: 1, name: 'Term 1', hideKey: 'hideTerm1', termKey: 'Term 1' },
+    { id: 2, name: 'Term 2', hideKey: 'hideTerm2', termKey: 'Term 2' },
+    { id: 3, name: 'Term 3', hideKey: 'hideTerm3', termKey: 'Term 3' }
   ];
 
   return (
@@ -1756,7 +1755,6 @@ function ClassDetailPage({ classInfo, onBack }) {
                   ) : (
                     <>
                       <th>Term 1</th><th>Term 2</th><th>Term 3</th>
-                      {visibleTerms.includes('Term 4') && <th>Term 4</th>}
                     </>
                   )}
                   <th>Final</th><th>Remarks</th>
@@ -1782,7 +1780,6 @@ function ClassDetailPage({ classInfo, onBack }) {
                           <td><GradePill grade={gs?.term1 || s.terms?.['Term 1']?.transmutedGrade} /></td>
                           <td><GradePill grade={gs?.term2 || s.terms?.['Term 2']?.transmutedGrade} /></td>
                           <td><GradePill grade={gs?.term3 || s.terms?.['Term 3']?.transmutedGrade} /></td>
-                          {visibleTerms.includes('Term 4') && <td><GradePill grade={gs?.term4 || s.terms?.['Term 4']?.transmutedGrade} /></td>}
                         </>
                       )}
                       <td><GradePill grade={gs?.finalGrade} /></td>
@@ -2432,34 +2429,84 @@ function StudentsOverview() {
 
                 <div>
                   <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Academic Performance (Handled by You)</h4>
-                  {details.student.subjects.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No handled subjects.</p> : (
-                    <div className="table-wrapper">
-                      <table className="data-table">
-                        <thead>
-                          <tr><th>Subject</th><th>Section</th><th>T1 / PRE</th><th>T2 / MID</th><th>T3 / PF</th><th>T4 / FIN</th><th>Final</th><th>Remarks</th></tr>
-                        </thead>
-                        <tbody>
-                          {details.student.subjects.map((sub, i) => {
-                            const gs = sub.gradingSummary || {};
-                            return (
-                              <tr key={i} onClick={() => setSelectedSubject(sub)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                                <td style={{ fontWeight: 600, color: 'var(--brand-600)' }}>{sub.info.subject}</td>
-                                <td>{sub.info.section}</td>
-                                <td><GradePill grade={gs.term1 || sub.terms?.['PRELIMS']?.summary?.transmutedGrade || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.term2 || sub.terms?.['MIDTERM']?.summary?.transmutedGrade || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.term3 || sub.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.term4 || sub.terms?.['FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
-                                <td><GradePill grade={gs.finalGrade} /></td>
-                                <td>{gs.remarks ? (
-                                  <StatusBadge status={gs.remarks} />
-                                ) : '—'}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  {(() => {
+                    const allSubs = details?.student?.subjects || [];
+                    if (allSubs.length === 0) return <p style={{ color: 'var(--text-muted)' }}>No handled subjects.</p>;
+                    const shsSubs = allSubs.filter(s => s?.info?.templateType !== 'tertiary');
+                    const collegeSubs = allSubs.filter(s => s?.info?.templateType === 'tertiary');
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        {shsSubs.length > 0 && (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>Senior High School (SHS) — 3 Terms</span>
+                              <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>3 Terms: Term 1, Term 2, Term 3</span>
+                            </div>
+                            <div className="table-wrapper">
+                              <table className="data-table">
+                                <thead>
+                                  <tr><th>Subject</th><th>Section</th><th>Term 1</th><th>Term 2</th><th>Term 3</th><th>Final</th><th>Remarks</th></tr>
+                                </thead>
+                                <tbody>
+                                  {shsSubs.map((sub, i) => {
+                                    const gs = sub?.gradingSummary || {};
+                                    return (
+                                      <tr key={i} onClick={() => setSelectedSubject(sub)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                        <td style={{ fontWeight: 600, color: 'var(--brand-600)' }}>{sub.info.subject}</td>
+                                        <td>{sub.info.section}</td>
+                                        <td><GradePill grade={gs.term1 || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.term2 || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.term3 || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.finalGrade} /></td>
+                                        <td>{gs.remarks ? <StatusBadge status={gs.remarks} /> : '—'}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {collegeSubs.length > 0 && (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--violet-700)' }}>Tertiary / College — 4 Terms</span>
+                              <span className="badge badge-brand" style={{ fontSize: '0.7rem' }}>4 Terms: PRE, MID, PF, FIN</span>
+                            </div>
+                            <div className="table-wrapper">
+                              <table className="data-table">
+                                <thead>
+                                  <tr><th>Course / Subject</th><th>Section</th><th>Prelims</th><th>Midterm</th><th>Pre-Finals</th><th>Finals</th><th>Final</th><th>Remarks</th></tr>
+                                </thead>
+                                <tbody>
+                                  {collegeSubs.map((sub, i) => {
+                                    const gs = sub?.gradingSummary || {};
+                                    return (
+                                      <tr key={i} onClick={() => setSelectedSubject(sub)} style={{ cursor: 'pointer', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-elevated)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                        <td style={{ fontWeight: 600, color: 'var(--violet-700)' }}>
+                                          <div>{sub.info.subject}</div>
+                                          {sub.info.code && <span className="tertiary-meta-chip" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>{sub.info.code}</span>}
+                                        </td>
+                                        <td>{sub.info.section}</td>
+                                        <td><GradePill grade={gs.term1 || sub.terms?.['PRELIMS']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.term2 || sub.terms?.['MIDTERM']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.term3 || sub.terms?.['PRE-FINALS']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.term4 || sub.terms?.['FINALS']?.summary?.transmutedGrade} /></td>
+                                        <td><GradePill grade={gs.finalGrade} /></td>
+                                        <td>{gs.remarks ? <StatusBadge status={gs.remarks} /> : '—'}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </>
             )}

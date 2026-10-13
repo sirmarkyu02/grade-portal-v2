@@ -5,7 +5,11 @@
   "visibleTerms": {
     "Term 1": true,
     "Term 2": true,
-    "Term 3": true
+    "Term 3": true,
+    "PRELIMS": true,
+    "MIDTERM": true,
+    "PRE-FINALS": true,
+    "FINALS": true
   },
   "termLocks": {
     "Term 1": false
@@ -13,8 +17,7 @@
   "gradeRelease": {
     "Term 1": true,
     "Term 2": true,
-    "Term 3": true,
-    "Term 4": true
+    "Term 3": true
   },
   "schoolInfo": {
     "name": "",

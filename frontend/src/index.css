@@ -1880,5 +1880,48 @@ h3 { font-size: 1.25rem; }
   gap: 2px;
 }
 
-
-
+/* ─── Modern Collegiate UI Enhancements ─── */
+.collegiate-course-card {
+  border-left: 4px solid var(--violet-500) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease !important;
+}
+.collegiate-course-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.12), 0 8px 10px -6px rgba(139, 92, 246, 0.08) !important;
+}
+.collegiate-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.15));
+  color: var(--violet-700);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.collegiate-metric-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: white;
+  transition: all 0.2s;
+}
+.collegiate-metric-card:hover {
+  border-color: var(--violet-300);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.08);
+}
+.collegiate-initial-pill {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  color: #166534;
+  border: 1px solid #86efac;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}

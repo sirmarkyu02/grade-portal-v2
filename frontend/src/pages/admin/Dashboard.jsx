@@ -635,8 +635,8 @@ function TemplatesPage() {
           <div style={{ marginTop: 16, padding: 16, background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)' }}>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 6 }}>Supported Template Formats:</p>
             <ul style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <li><strong>High School:</strong> Data Input, Term 1..4, Attendance, Grading Summary</li>
-              <li><strong>Tertiary / College:</strong> Settings, Input, PRELIMS, MIDTERM, PRE-FINALS, FINALS, Summary</li>
+              <li><strong>High School (SHS):</strong> Data Input, Term 1..3 (3 Terms Only), Attendance, Grading Summary</li>
+              <li><strong>Tertiary / College:</strong> Settings, Input, PRELIMS, MIDTERM, PRE-FINALS, FINALS (4 Terms), Summary</li>
             </ul>
           </div>
         </div>
@@ -758,123 +758,246 @@ function SettingsPage() {
 
         {activeTab === 'terms' && (
           <div className="card fade-in">
-            <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Terms & Access Control</h3></div>
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-              <div>
-                <p className="form-label" style={{ marginBottom: 12 }}>Visible Terms (Full Data)</p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Control which terms are visible to students when they view their grades.</p>
-                {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => (
-                  <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ fontWeight: 500 }}>{t}</span>
-                    <label className="toggle">
-                      <input type="checkbox" checked={form.visibleTerms?.[t] !== false} onChange={e => setForm(f => ({ ...f, visibleTerms: { ...f.visibleTerms, [t]: e.target.checked } }))} />
-                      <span className="toggle-slider" />
-                    </label>
-                  </div>
-                ))}
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1rem' }}>Terms & Access Control</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span className="badge badge-neutral">SHS: 3 Terms</span>
+                <span className="badge badge-brand">College: 4 Terms</span>
               </div>
-
-              <div className="divider" />
+            </div>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
               
-              <div>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <Lock size={18} color="var(--brand-500)" />
-                    <p className="form-label" style={{ marginBottom: 0 }}>Term Lock (Teacher Access)</p>
+              {/* ─── SECTION 1: SENIOR HIGH SCHOOL (SHS) ──────────────── */}
+              <div style={{ padding: '16px 20px', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--bg-panel)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                      Senior High School (SHS) — 3 Terms
+                    </h4>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                      Controls student visibility and teacher locking for Term 1, Term 2, and Term 3.
+                    </p>
                   </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Prevent teachers from editing, modifying, or adding components to a specific term to ensure the integrity of the grades after the term ends.
-                  </p>
+                  <span className="badge badge-neutral">High School</span>
                 </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {['Term 1', 'Term 2', 'Term 3', 'Term 4'].map(t => {
-                    const termLockState = form.termLocks?.[t];
-                    // If it's a boolean true, all are locked. If it's an object, we check if any are locked to show the master toggle as 'indeterminate' or checked.
-                    const isAllLocked = termLockState === true || (typeof termLockState === 'object' && Object.values(termLockState).every(v => v === true) && Object.keys(termLockState).length === classes.length && classes.length > 0);
-                    const isAnyLocked = isAllLocked || (typeof termLockState === 'object' && Object.values(termLockState).some(v => v === true));
-                    const isExpanded = !!expandedTerms[t];
 
-                    const toggleAll = (checked) => {
-                      setForm(f => ({ ...f, termLocks: { ...f.termLocks, [t]: checked } }));
-                    };
-
-                    const toggleSubject = (filename, checked) => {
-                      setForm(f => {
-                        let currentState = f.termLocks?.[t];
-                        let newState = {};
-                        if (currentState === true) {
-                          // Convert to object mapping
-                          classes.forEach(c => newState[c.filename] = true);
-                        } else if (typeof currentState === 'object') {
-                          newState = { ...currentState };
-                        }
-                        newState[filename] = checked;
-                        return { ...f, termLocks: { ...f.termLocks, [t]: newState } };
-                      });
-                    };
-
-                    return (
-                      <div key={t} style={{ 
-                        display: 'flex', flexDirection: 'column', 
-                        backgroundColor: isAnyLocked ? 'var(--brand-50)' : 'var(--bg-input)',
-                        border: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--border)'}`,
-                        borderRadius: 8,
-                        transition: 'all 0.2s',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', flex: 1 }} onClick={() => setExpandedTerms(prev => ({ ...prev, [t]: !prev[t] }))}>
-                            <div style={{ 
-                              width: 32, height: 32, borderRadius: '50%', 
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              backgroundColor: isAllLocked ? 'var(--brand-100)' : 'var(--violet-100)',
-                              color: isAllLocked ? 'var(--brand-600)' : 'var(--violet-600)'
-                            }}>
-                              {isAllLocked ? <Lock size={16} /> : <Unlock size={16} />}
-                            </div>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontWeight: 600, color: isAllLocked ? 'var(--brand-700)' : 'var(--text-primary)' }}>{t}</span>
-                                {isExpanded ? <ChevronUp size={16} color="var(--text-muted)"/> : <ChevronDown size={16} color="var(--text-muted)"/>}
-                              </div>
-                              <div style={{ fontSize: '0.75rem', color: isAllLocked ? 'var(--brand-500)' : 'var(--text-muted)' }}>
-                                {isAllLocked ? 'Locked for editing' : (isAnyLocked ? 'Partially locked' : 'Open for editing')}
-                              </div>
-                            </div>
-                          </div>
-                          <label className="toggle">
-                            <input type="checkbox" checked={isAllLocked} onChange={e => toggleAll(e.target.checked)} />
-                            <span className="toggle-slider" />
-                          </label>
-                        </div>
-                        {isExpanded && (
-                          <div style={{ borderTop: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--border)'}`, padding: '12px 16px', backgroundColor: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {classes.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>No classes available.</p> : 
-                             classes.map(c => {
-                               const isClassLocked = termLockState === true || (typeof termLockState === 'object' && termLockState[c.filename]);
-                               return (
-                                 <div key={c.filename} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                     <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{c.subject}</span>
-                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.gradeLevel} - {c.section}</span>
-                                   </div>
-                                   <label className="toggle">
-                                     <input type="checkbox" checked={!!isClassLocked} onChange={e => toggleSubject(c.filename, e.target.checked)} />
-                                     <span className="toggle-slider" />
-                                   </label>
-                                 </div>
-                               );
-                             })
-                            }
-                          </div>
-                        )}
+                {/* SHS Visible Terms */}
+                <div style={{ marginBottom: 20 }}>
+                  <p className="form-label" style={{ marginBottom: 8, fontSize: '0.8125rem' }}>Visible Terms (Student View)</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                    {['Term 1', 'Term 2', 'Term 3'].map(t => (
+                      <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t}</span>
+                        <label className="toggle">
+                          <input type="checkbox" checked={form.visibleTerms?.[t] !== false} onChange={e => setForm(f => ({ ...f, visibleTerms: { ...f.visibleTerms, [t]: e.target.checked } }))} />
+                          <span className="toggle-slider" />
+                        </label>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </div>
+
+                {/* SHS Term Locks */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Lock size={15} color="var(--brand-500)" />
+                    <p className="form-label" style={{ marginBottom: 0, fontSize: '0.8125rem' }}>SHS Term Locks (Prevent Teacher Edits)</p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {['Term 1', 'Term 2', 'Term 3'].map(t => {
+                      const shsClasses = classes.filter(c => c.templateType !== 'tertiary');
+                      const termLockState = form.termLocks?.[t];
+                      const isAllLocked = termLockState === true || (typeof termLockState === 'object' && shsClasses.length > 0 && shsClasses.every(c => termLockState[c.filename] === true));
+                      const isAnyLocked = isAllLocked || (typeof termLockState === 'object' && Object.values(termLockState).some(v => v === true));
+                      const isExpanded = !!expandedTerms[t];
+
+                      const toggleAll = (checked) => {
+                        setForm(f => ({ ...f, termLocks: { ...f.termLocks, [t]: checked } }));
+                      };
+
+                      const toggleSubject = (filename, checked) => {
+                        setForm(f => {
+                          let currentState = f.termLocks?.[t];
+                          let newState = {};
+                          if (currentState === true) {
+                            shsClasses.forEach(c => newState[c.filename] = true);
+                          } else if (typeof currentState === 'object') {
+                            newState = { ...currentState };
+                          }
+                          newState[filename] = checked;
+                          return { ...f, termLocks: { ...f.termLocks, [t]: newState } };
+                        });
+                      };
+
+                      return (
+                        <div key={t} style={{ border: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--border)'}`, borderRadius: 8, overflow: 'hidden', background: isAnyLocked ? 'var(--brand-50)' : 'var(--bg-main)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }} onClick={() => setExpandedTerms(prev => ({ ...prev, [t]: !prev[t] }))}>
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isAllLocked ? 'var(--brand-100)' : 'var(--violet-100)', color: isAllLocked ? 'var(--brand-600)' : 'var(--violet-600)' }}>
+                                {isAllLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{t}</span>
+                                <span style={{ fontSize: '0.75rem', color: isAllLocked ? 'var(--brand-500)' : 'var(--text-muted)', marginLeft: 8 }}>
+                                  {isAllLocked ? 'Locked' : (isAnyLocked ? 'Partially locked' : 'Open')}
+                                </span>
+                              </div>
+                              {isExpanded ? <ChevronUp size={14} color="var(--text-muted)"/> : <ChevronDown size={14} color="var(--text-muted)"/>}
+                            </div>
+                            <label className="toggle">
+                              <input type="checkbox" checked={isAllLocked} onChange={e => toggleAll(e.target.checked)} />
+                              <span className="toggle-slider" />
+                            </label>
+                          </div>
+                          {isExpanded && (
+                            <div style={{ borderTop: '1px solid var(--border)', padding: '10px 14px', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {shsClasses.length === 0 ? <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>No SHS classes uploaded.</p> : 
+                                shsClasses.map(c => {
+                                  const isClassLocked = termLockState === true || (typeof termLockState === 'object' && termLockState[c.filename]);
+                                  return (
+                                    <div key={c.filename} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{c.subject}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>{c.section}</span>
+                                      </div>
+                                      <label className="toggle">
+                                        <input type="checkbox" checked={!!isClassLocked} onChange={e => toggleSubject(c.filename, e.target.checked)} />
+                                        <span className="toggle-slider" />
+                                      </label>
+                                    </div>
+                                  );
+                                })
+                              }
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={handleSave} disabled={saving}>
+
+              {/* ─── SECTION 2: TERTIARY / COLLEGE (4 TERMS) ──────────── */}
+              <div style={{ padding: '16px 20px', borderRadius: 12, border: '1px solid var(--violet-200)', background: 'var(--grad-soft)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, margin: 0, color: 'var(--violet-700)' }}>
+                      Tertiary / College — 4 Terms (PRELIMS, MIDTERM, PRE-FINALS, FINALS)
+                    </h4>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                      Controls student visibility and faculty locking for the 4 collegiate grading terms.
+                    </p>
+                  </div>
+                  <span className="badge badge-brand">College</span>
+                </div>
+
+                {/* College Visible Terms */}
+                <div style={{ marginBottom: 20 }}>
+                  <p className="form-label" style={{ marginBottom: 8, fontSize: '0.8125rem' }}>Visible Terms (Collegiate View)</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                    {[
+                      { key: 'PRELIMS', label: 'PRELIMS (Prelim)' },
+                      { key: 'MIDTERM', label: 'MIDTERM (Midterm)' },
+                      { key: 'PRE-FINALS', label: 'PRE-FINALS (Pre-Final)' },
+                      { key: 'FINALS', label: 'FINALS (Finals)' }
+                    ].map(({ key, label }) => (
+                      <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'white', border: '1px solid var(--violet-200)', borderRadius: 8 }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-main)' }}>{label}</span>
+                        <label className="toggle">
+                          <input type="checkbox" checked={form.visibleTerms?.[key] !== false} onChange={e => setForm(f => ({ ...f, visibleTerms: { ...f.visibleTerms, [key]: e.target.checked } }))} />
+                          <span className="toggle-slider" />
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* College Term Locks */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Lock size={15} color="var(--violet-600)" />
+                    <p className="form-label" style={{ marginBottom: 0, fontSize: '0.8125rem' }}>College Term Locks (Prevent Faculty Edits)</p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[
+                      { key: 'PRELIMS', label: 'PRELIMS' },
+                      { key: 'MIDTERM', label: 'MIDTERM' },
+                      { key: 'PRE-FINALS', label: 'PRE-FINALS' },
+                      { key: 'FINALS', label: 'FINALS' }
+                    ].map(({ key, label }) => {
+                      const collegeClasses = classes.filter(c => c.templateType === 'tertiary');
+                      const termLockState = form.termLocks?.[key];
+                      const isAllLocked = termLockState === true || (typeof termLockState === 'object' && collegeClasses.length > 0 && collegeClasses.every(c => termLockState[c.filename] === true));
+                      const isAnyLocked = isAllLocked || (typeof termLockState === 'object' && Object.values(termLockState).some(v => v === true));
+                      const isExpanded = !!expandedTerms[key];
+
+                      const toggleAll = (checked) => {
+                        setForm(f => ({ ...f, termLocks: { ...f.termLocks, [key]: checked } }));
+                      };
+
+                      const toggleSubject = (filename, checked) => {
+                        setForm(f => {
+                          let currentState = f.termLocks?.[key];
+                          let newState = {};
+                          if (currentState === true) {
+                            collegeClasses.forEach(c => newState[c.filename] = true);
+                          } else if (typeof currentState === 'object') {
+                            newState = { ...currentState };
+                          }
+                          newState[filename] = checked;
+                          return { ...f, termLocks: { ...f.termLocks, [key]: newState } };
+                        });
+                      };
+
+                      return (
+                        <div key={key} style={{ border: `1px solid ${isAnyLocked ? 'var(--brand-200)' : 'var(--violet-200)'}`, borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', flex: 1 }} onClick={() => setExpandedTerms(prev => ({ ...prev, [key]: !prev[key] }))}>
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: isAllLocked ? 'var(--brand-100)' : 'var(--violet-100)', color: isAllLocked ? 'var(--brand-600)' : 'var(--violet-600)' }}>
+                                {isAllLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                              </div>
+                              <div>
+                                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--violet-800)' }}>{label}</span>
+                                <span style={{ fontSize: '0.75rem', color: isAllLocked ? 'var(--brand-500)' : 'var(--text-muted)', marginLeft: 8 }}>
+                                  {isAllLocked ? 'Locked' : (isAnyLocked ? 'Partially locked' : 'Open')}
+                                </span>
+                              </div>
+                              {isExpanded ? <ChevronUp size={14} color="var(--text-muted)"/> : <ChevronDown size={14} color="var(--text-muted)"/>}
+                            </div>
+                            <label className="toggle">
+                              <input type="checkbox" checked={isAllLocked} onChange={e => toggleAll(e.target.checked)} />
+                              <span className="toggle-slider" />
+                            </label>
+                          </div>
+                          {isExpanded && (
+                            <div style={{ borderTop: '1px solid var(--violet-200)', padding: '10px 14px', background: 'var(--bg-panel)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {collegeClasses.length === 0 ? <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>No College classes uploaded.</p> : 
+                                collegeClasses.map(c => {
+                                  const isClassLocked = termLockState === true || (typeof termLockState === 'object' && termLockState[c.filename]);
+                                  return (
+                                    <div key={c.filename} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <div>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{c.subject}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 8 }}>{c.section}</span>
+                                      </div>
+                                      <label className="toggle">
+                                        <input type="checkbox" checked={!!isClassLocked} onChange={e => toggleSubject(c.filename, e.target.checked)} />
+                                        <span className="toggle-slider" />
+                                      </label>
+                                    </div>
+                                  );
+                                })
+                              }
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }} onClick={handleSave} disabled={saving}>
                 {saving ? <><LoadingSpinner /> Saving...</> : 'Save Term Settings'}
               </button>
             </div>
@@ -1120,35 +1243,107 @@ function StudentsOverview() {
             </div>
 
             <div>
-              <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Academic Performance</h4>
-              {(!details?.student?.subjects || details.student.subjects.length === 0) ? <p style={{ color: 'var(--text-muted)' }}>No subjects enrolled.</p> : (
-                <div className="table-wrapper">
-                  <table className="data-table">
-                    <thead>
-                      <tr><th>Subject</th><th>Section</th><th>T1 / PRE</th><th>T2 / MID</th><th>T3 / PF</th><th>T4 / FIN</th><th>Final</th><th>Remarks</th></tr>
-                    </thead>
-                    <tbody>
-                      {(details?.student?.subjects || []).map((sub, i) => {
-                        const gs = sub?.gradingSummary || {};
-                        return (
-                          <tr key={i}>
-                            <td style={{ fontWeight: 600 }}>{sub?.info?.subject || '—'}</td>
-                            <td>{sub?.info?.section || '—'}</td>
-                            <td><GradePill grade={gs.term1 || sub?.terms?.['PRELIMS']?.summary?.transmutedGrade || sub?.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term2 || sub?.terms?.['MIDTERM']?.summary?.transmutedGrade || sub?.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term3 || sub?.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub?.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term4 || sub?.terms?.['FINALS']?.summary?.transmutedGrade || sub?.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.finalGrade} /></td>
-                            <td>{gs.remarks ? (
-                              <StatusBadge status={gs.remarks} />
-                            ) : '—'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              {(() => {
+                const allSubs = details?.student?.subjects || [];
+                if (allSubs.length === 0) {
+                  return <p style={{ color: 'var(--text-muted)' }}>No subjects enrolled.</p>;
+                }
+                const shsSubs = allSubs.filter(s => s?.info?.templateType !== 'tertiary');
+                const collegeSubs = allSubs.filter(s => s?.info?.templateType === 'tertiary');
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {shsSubs.length > 0 && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
+                            Senior High School (SHS) — 3 Terms
+                          </h4>
+                          <span className="badge badge-neutral" style={{ fontSize: '0.75rem' }}>3 Terms: Term 1, Term 2, Term 3</span>
+                        </div>
+                        <div className="table-wrapper">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Subject</th>
+                                <th>Section</th>
+                                <th>Term 1</th>
+                                <th>Term 2</th>
+                                <th>Term 3</th>
+                                <th>Final Grade</th>
+                                <th>Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {shsSubs.map((sub, i) => {
+                                const gs = sub?.gradingSummary || {};
+                                return (
+                                  <tr key={i}>
+                                    <td style={{ fontWeight: 600 }}>{sub?.info?.subject || '—'}</td>
+                                    <td>{sub?.info?.section || '—'}</td>
+                                    <td><GradePill grade={gs.term1 || sub?.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.term2 || sub?.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.term3 || sub?.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.finalGrade} /></td>
+                                    <td>{gs.remarks ? <StatusBadge status={gs.remarks} /> : '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {collegeSubs.length > 0 && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--violet-700)' }}>
+                            Tertiary / College — 4 Terms (1.00 – 5.00 Scale)
+                          </h4>
+                          <span className="badge badge-brand" style={{ fontSize: '0.75rem' }}>4 Terms: PRE, MID, PF, FIN</span>
+                        </div>
+                        <div className="table-wrapper">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Course / Subject</th>
+                                <th>Section</th>
+                                <th>Prelims</th>
+                                <th>Midterm</th>
+                                <th>Pre-Finals</th>
+                                <th>Finals</th>
+                                <th>Final Grade</th>
+                                <th>Remarks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {collegeSubs.map((sub, i) => {
+                                const gs = sub?.gradingSummary || {};
+                                return (
+                                  <tr key={i}>
+                                    <td style={{ fontWeight: 600 }}>
+                                      <div>{sub?.info?.subject || '—'}</div>
+                                      {sub?.info?.code && <span className="tertiary-meta-chip" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>{sub.info.code}</span>}
+                                    </td>
+                                    <td>{sub?.info?.section || '—'}</td>
+                                    <td><GradePill grade={gs.term1 || sub?.terms?.['PRELIMS']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.term2 || sub?.terms?.['MIDTERM']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.term3 || sub?.terms?.['PRE-FINALS']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.term4 || sub?.terms?.['FINALS']?.summary?.transmutedGrade} /></td>
+                                    <td><GradePill grade={gs.finalGrade} /></td>
+                                    <td>{gs.remarks ? <StatusBadge status={gs.remarks} /> : '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : <EmptyState icon={Users} title="Error" description="Could not load student details." />}
