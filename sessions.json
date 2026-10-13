@@ -488,5 +488,84 @@
     },
     "createdAt": 1791803399130,
     "lastActive": 1791803399130
+  },
+  "1b583423-abbb-4169-b9db-0a09d62a7679": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791871055938,
+    "lastActive": 1791871055938
+  },
+  "659ad497-72e0-468d-94e8-54f2dad7b3fe": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791871124780,
+    "lastActive": 1791871124780
+  },
+  "97dce506-01fc-441c-bf79-8f0ab5b38bac": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791874082719,
+    "lastActive": 1791874082719
+  },
+  "5f21c4d1-de15-4cc9-965b-806e0bd4cfc8": {
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "meta": {
+      "name": "JOHN MARQ E. RAMOS"
+    },
+    "createdAt": 1791901492606,
+    "lastActive": 1791901733101
+  },
+  "4b8acacd-3f30-4f1d-9a7c-d7a2c1050ac7": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791902766643,
+    "lastActive": 1791902766686
+  },
+  "7b6ecb23-061b-4140-bb50-2deee6dba9f0": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791902824349,
+    "lastActive": 1791902824379
+  },
+  "400f29f3-31df-41b9-beaf-d16ea3d91b3a": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791902859189,
+    "lastActive": 1791902859264
+  },
+  "1924e748-b2cb-4dcc-aee4-2ef71e3d288c": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791903793574,
+    "lastActive": 1791903793598
+  },
+  "a2d70349-6631-46db-a714-ffdebb75d701": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791903814525,
+    "lastActive": 1791903814525
+  },
+  "039f4e5f-3f30-4da5-869c-8ee4f1ef1b01": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791903880711,
+    "lastActive": 1791903880711
+  },
+  "098f0b67-a953-49d6-b9c9-1f4f2c37be36": {
+    "userId": "admin",
+    "role": "admin",
+    "meta": {},
+    "createdAt": 1791903905134,
+    "lastActive": 1791903905134
   }
 }

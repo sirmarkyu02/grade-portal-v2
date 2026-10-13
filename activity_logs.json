@@ -1,5 +1,237 @@
 [
   {
+    "id": "4cf33635-489b-45d9-b136-e43b8c170a9d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T15:05:05.115Z"
+  },
+  {
+    "id": "9f9289fe-9129-4292-89c2-a6986f695347",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Pull",
+    "details": "Pulled 7 Excel file(s) from AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T15:04:44.780Z"
+  },
+  {
+    "id": "4bf5b3cc-4c61-4d48-b88a-05c6d4730a70",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T15:04:40.710Z"
+  },
+  {
+    "id": "4b81af4f-856d-44a4-8ba6-a8ba8ce87a4f",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Push",
+    "details": "Pushed 1 Excel file(s) to AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T15:03:37.863Z"
+  },
+  {
+    "id": "662b580d-f7c7-43a9-88ab-cf8659035ef0",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T15:03:34.524Z"
+  },
+  {
+    "id": "bb9947a5-7eeb-472c-8bb7-756c6e194264",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T15:03:13.571Z"
+  },
+  {
+    "id": "ac47d086-6f99-4fe3-8fbb-1d11c2af0a98",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T14:47:39.184Z"
+  },
+  {
+    "id": "2a2e9a6c-0ab7-47ec-9903-2b614014b275",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T14:47:04.346Z"
+  },
+  {
+    "id": "e8789210-6609-47a2-a565-47eb16023f25",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T14:46:06.637Z"
+  },
+  {
+    "id": "028ad4fb-b1ae-45c3-9ca8-3047e65a8f23",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-13T14:24:52.603Z"
+  },
+  {
+    "id": "e697671c-5919-4cbc-866a-3f6fa14fb7f6",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Pull",
+    "details": "Pulled 7 Excel file(s) from AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T14:23:52.253Z"
+  },
+  {
+    "id": "97076ee7-eefb-42a8-8593-8471ffa9f6c6",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-13T14:23:04.490Z"
+  },
+  {
+    "id": "2d533be5-5f7c-44e9-acab-a4d20c67aaae",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated teacher sirmarkyu",
+    "timestamp": "2026-10-13T13:21:41.263Z"
+  },
+  {
+    "id": "118296b4-2116-41a0-af7e-4641ebb2d971",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Revert Impersonation",
+    "details": "Exited impersonation mode and returned to Admin",
+    "timestamp": "2026-10-13T13:21:21.356Z"
+  },
+  {
+    "id": "28377561-b1c7-43ef-9998-b75be20ec828",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Impersonate",
+    "details": "Impersonated student 02000367567",
+    "timestamp": "2026-10-13T12:43:30.084Z"
+  },
+  {
+    "id": "fa3283bd-9b1f-4e30-809a-293e504e3e17",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T12:01:03.048Z"
+  },
+  {
+    "id": "98d67784-a5c7-42e5-9829-84d3d0826f1f",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-13T08:03:19.967Z"
+  },
+  {
+    "id": "5a8d9146-78af-44f2-b525-041a98bfd6d0",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T07:37:21.878Z"
+  },
+  {
+    "id": "7d48edcd-4e92-4747-864a-e71efde8b76e",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T07:16:19.393Z"
+  },
+  {
+    "id": "22f6a21f-7681-4395-8c7f-aca91074ad0a",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Pull",
+    "details": "Pulled 1 Excel file(s) from AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T06:48:19.773Z"
+  },
+  {
+    "id": "45f0fc4c-3159-4e96-9eee-1c9787f2feff",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Pull",
+    "details": "Pulled 7 Excel file(s) from AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T06:48:11.494Z"
+  },
+  {
+    "id": "8ca8bff2-1aee-4117-b1f2-2090d901ffd1",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T06:48:02.713Z"
+  },
+  {
+    "id": "eedcae9e-3c4a-4bb6-b184-6648e70306dd",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Cloud Sync Push",
+    "details": "Pushed 7 Excel file(s) to AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T06:02:49.094Z"
+  },
+  {
+    "id": "7122ae4e-99f3-4819-9ba6-39659d926aa1",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-13T06:01:48.485Z"
+  },
+  {
+    "id": "285fe8a5-c925-4526-a860-a6ba024302d2",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Push",
+    "details": "Pushed 1 Excel file(s) to AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T05:58:53.996Z"
+  },
+  {
+    "id": "c3827677-1590-4cfc-8219-68eaafe8065f",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T05:58:44.777Z"
+  },
+  {
+    "id": "457ee0a3-d580-4328-ac82-bad14b14873d",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Cloud Sync Push",
+    "details": "Pushed 7 Excel file(s) to AWS Cloud (http://16.59.47.134)",
+    "timestamp": "2026-10-13T05:57:42.937Z"
+  },
+  {
+    "id": "3aa0e003-b73f-48b1-9fb8-99c52fe5ef07",
+    "userId": "admin",
+    "role": "admin",
+    "action": "Login",
+    "details": "Admin logged in",
+    "timestamp": "2026-10-13T05:57:35.909Z"
+  },
+  {
+    "id": "4f976abe-0cbe-417f-a4a8-54d9779e8137",
+    "userId": "sirmarkyu",
+    "role": "teacher",
+    "action": "Login",
+    "details": "Teacher logged in",
+    "timestamp": "2026-10-12T23:33:25.870Z"
+  },
+  {
     "id": "09c38371-9676-45f6-b788-0f4a9e649dd5",
     "userId": "02000498439",
     "role": "student",

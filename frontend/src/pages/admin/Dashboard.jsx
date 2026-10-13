@@ -46,6 +46,7 @@ function OverviewPage() {
       setAuthorizedConfirm(false);
       checkCloudStatus();
       loadStats();
+      window.dispatchEvent(new CustomEvent('grades-synced'));
     } catch (err) {
       toast.error(err.response?.data?.error || 'Cloud synchronization failed.');
     } finally {
@@ -62,6 +63,7 @@ function OverviewPage() {
       setAuthorizedConfirm(false);
       checkCloudStatus();
       loadStats();
+      window.dispatchEvent(new CustomEvent('grades-synced'));
     } catch (err) {
       toast.error(err.response?.data?.error || 'Pull from AWS failed.');
     } finally {
@@ -241,28 +243,38 @@ function OverviewPage() {
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
               {syncMode === 'pull' ? (
                 <>
-                  You are about to pull and update your offline files with the latest data from the live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>). Use this if you or teachers made changes directly on AWS.
+                  You are about to pull and download files from the live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>) to replace this computer's local files. <strong>Use this only if you or teachers made changes directly on the online website.</strong>
                 </>
               ) : (
                 <>
-                  You are about to push <strong>{cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Excel grade files</strong> and active class visibility settings from this offline computer to your live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>).
+                  You are about to push <strong>{cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Excel grade files</strong> and active settings from this offline computer up to the live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>). <strong>Use this after entering grades locally so they appear online.</strong>
                 </>
               )}
             </p>
           </div>
 
+          {syncMode === 'pull' && (
+            <div style={{ padding: '12px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10, color: '#92400e', fontSize: '0.8125rem' }}>
+              <AlertTriangle size={18} color="#d97706" style={{ marginTop: 2, flexShrink: 0 }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: 2 }}>Important Notice regarding Pull:</strong>
+                <span>"Pull from AWS" will <strong>overwrite your local offline files</strong> with whatever data is currently on the online AWS server. If you made edits on this offline computer, choose <strong>"Push to AWS"</strong> instead! (A backup of your existing local files is automatically saved).</span>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.8125rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
             {syncMode === 'pull' ? (
               <>
                 <div>✓ Downloads latest online Excel grade sheets from AWS into your local Grades folder</div>
-                <div>✓ Automatically reloads and recalculates student ratings, records, and summaries locally</div>
-                <div>✓ Ideal when grade updates or edits occurred while using the online portal</div>
+                <div>✓ Automatically reloads and recalculates student ratings and records locally</div>
+                <div>✓ Existing local files are automatically backed up to Grades_History</div>
               </>
             ) : (
               <>
-                <div>✓ Overwrites online Excel sheets with current offline updates (Offline ➔ AWS)</div>
+                <div>✓ Uploads offline Excel sheets to AWS Cloud (Offline ➔ AWS)</div>
                 <div>✓ Immediately recalculates student ratings, initial grades, and attendance online</div>
-                <div>✓ Preserves registered student accounts and self-service passwords</div>
+                <div>✓ Enables students and teachers to view the latest grades via the internet</div>
               </>
             )}
           </div>
@@ -284,7 +296,7 @@ function OverviewPage() {
             />
             <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
               {syncMode === 'pull' 
-                ? 'I authorize pulling latest online Excel data to update my local offline files.' 
+                ? 'I understand and authorize replacing local offline files with data from AWS Cloud.' 
                 : 'I authorize updating the live AWS Cloud portal with offline Excel data.'}
             </span>
           </label>
@@ -1105,9 +1117,23 @@ function StudentsOverview() {
   const [confirmReset, setConfirmReset] = useState(null);
   const [resetting, setResetting] = useState(false);
 
-  useEffect(() => {
+  const fetchStudents = () => {
     api.get('/admin/students').then(r => setStudents(r.data.students || [])).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchStudents();
+    window.addEventListener('grades-synced', fetchStudents);
+    return () => window.removeEventListener('grades-synced', fetchStudents);
   }, []);
+
+  useEffect(() => {
+    if (selectedStudent) {
+      const handleSync = () => handleSelectStudent(selectedStudent);
+      window.addEventListener('grades-synced', handleSync);
+      return () => window.removeEventListener('grades-synced', handleSync);
+    }
+  }, [selectedStudent]);
 
   const toggleStatus = async (s) => {
     try {

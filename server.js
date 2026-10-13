@@ -2003,6 +2003,10 @@ app.post('/api/sync/receive-push', (req, res) => {
       if (item && item.filename && item.contentBase64) {
         const safeName = path.basename(item.filename);
         const targetPath = path.join(GRADES_DIR, safeName);
+        if (fs.existsSync(targetPath)) {
+          const backupPath = path.join(GRADES_HISTORY_DIR, `${Date.now()}_${safeName}`);
+          try { fs.copyFileSync(targetPath, backupPath); } catch (e) {}
+        }
         fs.writeFileSync(targetPath, Buffer.from(item.contentBase64, 'base64'));
         savedCount++;
       }
@@ -2299,6 +2303,10 @@ app.post('/api/sync/pull-from-cloud', requireAuth(['admin', 'teacher']), async (
       if (item && item.filename && item.contentBase64) {
         const safeName = path.basename(item.filename);
         const targetPath = path.join(GRADES_DIR, safeName);
+        if (fs.existsSync(targetPath)) {
+          const backupPath = path.join(GRADES_HISTORY_DIR, `${Date.now()}_${safeName}`);
+          try { fs.copyFileSync(targetPath, backupPath); } catch (e) {}
+        }
         fs.writeFileSync(targetPath, Buffer.from(item.contentBase64, 'base64'));
         savedCount++;
       }

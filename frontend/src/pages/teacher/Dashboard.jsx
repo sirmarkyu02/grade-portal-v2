@@ -90,6 +90,7 @@ function ClassListPage({ onSelectClass }) {
       setSyncAllAuthorized(false);
       checkCloudStatus();
       loadClasses();
+      window.dispatchEvent(new CustomEvent('grades-synced'));
     } catch (err) {
       toast.error(err.response?.data?.error || `Failed to ${syncAllMode === 'pull' ? 'pull from' : 'sync with'} AWS Cloud.`);
     } finally {
@@ -350,6 +351,16 @@ function ClassListPage({ onSelectClass }) {
                 </span>
               </div>
             </div>
+
+            {syncAllMode === 'pull' && (
+              <div style={{ padding: '12px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10, color: '#92400e', fontSize: '0.8125rem', marginBottom: 16 }}>
+                <AlertTriangle size={18} color="#d97706" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <strong style={{ display: 'block', marginBottom: 2 }}>Caution: Pulling Replaces Offline Files</strong>
+                  <span>"Pull from AWS" downloads online sheets from AWS and <strong>overwrites your offline class files</strong>. If you entered or edited grades offline on this computer, use <strong>"Push to AWS"</strong> instead! (Your local files are safely backed up automatically).</span>
+                </div>
+              </div>
+            )}
 
             <label style={{
               display: 'flex',
@@ -1524,6 +1535,7 @@ function ClassDetailPage({ classInfo, onBack }) {
         toast.success(res.data.message || 'Class successfully pushed to AWS Cloud!');
         setSyncModalOpen(false);
       }
+      window.dispatchEvent(new CustomEvent('grades-synced'));
     } catch (err) {
       toast.error(err.response?.data?.error || `Failed to ${syncMode === 'pull' ? 'pull' : 'push'} class.`);
     } finally {
