@@ -2047,6 +2047,60 @@ app.post('/api/sync/receive-push', (req, res) => {
   }
 });
 
+// 2b. Remote Endpoint: Serve files to authorized pull requests (Runs on AWS or offline)
+app.post('/api/sync/provide-pull', (req, res) => {
+  const secretKey = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  const clientToken = req.headers['x-sync-token'];
+
+  if (!clientToken || clientToken !== secretKey) {
+    return res.status(403).json({ error: 'Forbidden: Invalid or missing sync authentication token.' });
+  }
+
+  const specificFile = req.body?.filename;
+  let filesToServe = [];
+
+  if (specificFile) {
+    const safeName = path.basename(specificFile);
+    if (fs.existsSync(path.join(GRADES_DIR, safeName))) {
+      filesToServe.push(safeName);
+    } else {
+      return res.status(404).json({ error: `File ${safeName} not found on server.` });
+    }
+  } else {
+    filesToServe = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+  }
+
+  try {
+    const packagedFiles = filesToServe.map(fname => {
+      const fpath = path.join(GRADES_DIR, fname);
+      const stat = fs.statSync(fpath);
+      return {
+        filename: fname,
+        contentBase64: fs.readFileSync(fpath).toString('base64'),
+        lastModified: stat.mtime.toISOString(),
+        size: stat.size
+      };
+    });
+
+    logActivity('sync', 'system', 'Cloud Sync Served Pull', `Served ${packagedFiles.length} Excel file(s) to pull client`);
+
+    res.json({
+      success: true,
+      files: packagedFiles,
+      classSettings: classSettingsConfig,
+      settings: {
+        visibleTerms: settingsConfig.visibleTerms,
+        termLocks: settingsConfig.termLocks,
+        gradeRelease: settingsConfig.gradeRelease
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('❌ Cloud sync provide-pull error:', err);
+    res.status(500).json({ error: 'Failed to package files for pull: ' + err.message });
+  }
+});
+
 // 3. Local Status & Connectivity Check (Called by frontend)
 app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) => {
   const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
@@ -2192,6 +2246,105 @@ app.post('/api/sync/push-to-cloud', requireAuth(['admin', 'teacher']), async (re
     res.status(500).json({
       success: false,
       error: 'Failed to synchronize with AWS: ' + syncErr.message
+    });
+  }
+});
+
+// 4b. Trigger Pull from AWS Cloud (Authorized by Admin or Teacher)
+app.post('/api/sync/pull-from-cloud', requireAuth(['admin', 'teacher']), async (req, res) => {
+  const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
+  const secretKey = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  const specificFile = req.body?.filename;
+
+  // Step 1: Pre-flight check AWS connectivity
+  try {
+    const probeController = new AbortController();
+    const probeTimeout = setTimeout(() => probeController.abort(), 4000);
+    const probeResp = await fetch(`${cloudUrl}/api/sync/cloud-status`, { signal: probeController.signal });
+    clearTimeout(probeTimeout);
+    if (!probeResp.ok) throw new Error('Cloud server returned error');
+  } catch (probeErr) {
+    return res.status(503).json({
+      success: false,
+      offline: true,
+      error: `AWS Cloud server (${cloudUrl}) is currently unreachable. Please check your internet connection and verify the online server is active.`
+    });
+  }
+
+  // Step 2: Request files from AWS
+  try {
+    const pullResp = await fetch(`${cloudUrl}/api/sync/provide-pull`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-sync-token': secretKey
+      },
+      body: JSON.stringify({ filename: specificFile })
+    });
+
+    const result = await pullResp.json();
+    if (!pullResp.ok || !result.success || !Array.isArray(result.files)) {
+      throw new Error(result.error || 'Failed to retrieve files from AWS Cloud.');
+    }
+
+    if (result.files.length === 0) {
+      return res.status(404).json({ error: 'No Excel files available to pull from AWS Cloud.' });
+    }
+
+    // Step 3: Write pulled files to local GRADES_DIR
+    let savedCount = 0;
+    if (!fs.existsSync(GRADES_DIR)) fs.mkdirSync(GRADES_DIR, { recursive: true });
+
+    result.files.forEach(item => {
+      if (item && item.filename && item.contentBase64) {
+        const safeName = path.basename(item.filename);
+        const targetPath = path.join(GRADES_DIR, safeName);
+        fs.writeFileSync(targetPath, Buffer.from(item.contentBase64, 'base64'));
+        savedCount++;
+      }
+    });
+
+    // Step 4: Merge class settings if provided
+    if (result.classSettings && typeof result.classSettings === 'object') {
+      classSettingsConfig = { ...classSettingsConfig, ...result.classSettings };
+      saveJSON(CLASS_SETTINGS_FILE, classSettingsConfig);
+    }
+
+    // Step 5: Merge general settings if provided
+    if (result.settings && typeof result.settings === 'object') {
+      if (result.settings.visibleTerms) settingsConfig.visibleTerms = result.settings.visibleTerms;
+      if (result.settings.termLocks) settingsConfig.termLocks = result.settings.termLocks;
+      if (result.settings.gradeRelease) settingsConfig.gradeRelease = result.settings.gradeRelease;
+      saveJSON(SETTINGS_FILE, settingsConfig);
+    }
+
+    // Step 6: Reload local data
+    loadAllData();
+
+    // Step 7: Update local lastSync metadata
+    const syncTime = new Date().toISOString();
+    settingsConfig.cloudSync = {
+      ...(settingsConfig.cloudSync || {}),
+      serverUrl: cloudUrl,
+      secretKey,
+      lastSync: syncTime
+    };
+    saveJSON(SETTINGS_FILE, settingsConfig);
+
+    logActivity(req.session.userId, req.session.role, 'Cloud Sync Pull', `Pulled ${savedCount} Excel file(s) from AWS Cloud (${cloudUrl})`);
+
+    res.json({
+      success: true,
+      message: `Successfully pulled and updated ${savedCount} Excel file(s) from AWS Cloud!`,
+      filesCount: savedCount,
+      totalStudents: Object.keys(studentsMap).length,
+      timestamp: syncTime
+    });
+  } catch (pullErr) {
+    console.error('❌ Cloud pull error:', pullErr);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to pull from AWS: ' + pullErr.message
     });
   }
 });

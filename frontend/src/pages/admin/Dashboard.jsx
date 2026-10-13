@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet, Cloud, CloudUpload, ExternalLink, Globe } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet, Cloud, CloudUpload, CloudDownload, ExternalLink, Globe } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
 import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, ChevronDown, ChevronUp } from 'lucide-react';
@@ -16,6 +16,7 @@ function OverviewPage() {
   const [cloudStatus, setCloudStatus] = useState({ online: false, checking: true, cloudUrl: 'http://16.59.47.134', lastSync: null, localFilesCount: 0 });
   const [cloudSyncing, setCloudSyncing] = useState(false);
   const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [syncMode, setSyncMode] = useState('push'); // 'push' | 'pull'
   const [authorizedConfirm, setAuthorizedConfirm] = useState(false);
 
   const loadStats = async () => {
@@ -47,6 +48,22 @@ function OverviewPage() {
       loadStats();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Cloud synchronization failed.');
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    setCloudSyncing(true);
+    try {
+      const res = await api.post('/sync/pull-from-cloud');
+      toast.success(res.data?.message || 'Successfully pulled updates from AWS Cloud!');
+      setSyncModalOpen(false);
+      setAuthorizedConfirm(false);
+      checkCloudStatus();
+      loadStats();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Pull from AWS failed.');
     } finally {
       setCloudSyncing(false);
     }
@@ -128,7 +145,7 @@ function OverviewPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button 
               className="btn btn-secondary btn-sm" 
               onClick={checkCloudStatus} 
@@ -137,16 +154,27 @@ function OverviewPage() {
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <RefreshCw size={13} className={cloudStatus.checking ? 'spin' : ''} />
-              <span>Check Connection</span>
+              <span>Check</span>
+            </button>
+            <button 
+              className="btn btn-secondary btn-sm" 
+              onClick={() => { setSyncMode('pull'); setAuthorizedConfirm(false); setSyncModalOpen(true); }}
+              disabled={cloudSyncing}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Download latest edits from AWS Cloud into offline app"
+            >
+              <CloudDownload size={14} style={{ color: 'var(--brand-600)' }} />
+              <span>Pull from AWS</span>
             </button>
             <button 
               className="btn btn-primary btn-sm" 
-              onClick={() => { setAuthorizedConfirm(false); setSyncModalOpen(true); }}
+              onClick={() => { setSyncMode('push'); setAuthorizedConfirm(false); setSyncModalOpen(true); }}
               disabled={cloudSyncing}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              title="Push offline grade sheets and settings to AWS Cloud"
             >
               <CloudUpload size={14} />
-              <span>Authorize & Sync to AWS</span>
+              <span>Push to AWS</span>
             </button>
           </div>
         </div>
@@ -190,28 +218,53 @@ function OverviewPage() {
             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
               {cloudStatus.lastSync ? new Date(cloudStatus.lastSync).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never Synced Yet'}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Offline to AWS push</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Offline & AWS sync</span>
           </div>
         </div>
       </div>
 
       {/* Cloud Sync Authorization Modal */}
-      <Modal open={syncModalOpen} onClose={() => !cloudSyncing && setSyncModalOpen(false)} title="Authorize Cloud Synchronization" size="md">
+      <Modal 
+        open={syncModalOpen} 
+        onClose={() => !cloudSyncing && setSyncModalOpen(false)} 
+        title={syncMode === 'pull' ? 'Authorize Pull from AWS Cloud (Online ➔ Offline)' : 'Authorize Push to AWS Cloud (Offline ➔ Online)'} 
+        size="md"
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ padding: '14px 18px', background: 'var(--grad-soft)', borderRadius: 12, border: '1px solid var(--violet-200)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
               <Shield size={18} color="var(--violet-700)" />
-              <strong style={{ fontSize: '0.9375rem', color: 'var(--violet-900)' }}>Administrator Authorization Required</strong>
+              <strong style={{ fontSize: '0.9375rem', color: 'var(--violet-900)' }}>
+                {syncMode === 'pull' ? 'Download from AWS Cloud' : 'Administrator Authorization Required'}
+              </strong>
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-              You are about to push <strong>{cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Excel grade files</strong> and active class visibility settings from this offline computer to your live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>).
+              {syncMode === 'pull' ? (
+                <>
+                  You are about to pull and update your offline files with the latest data from the live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>). Use this if you or teachers made changes directly on AWS.
+                </>
+              ) : (
+                <>
+                  You are about to push <strong>{cloudStatus.localFilesCount || stats?.status?.filesLoaded || 0} Excel grade files</strong> and active class visibility settings from this offline computer to your live AWS Cloud Server (<strong>{cloudStatus.cloudUrl}</strong>).
+                </>
+              )}
             </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.8125rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: 12, borderRadius: 10 }}>
-            <div>✓ Overwrites online Excel sheets with current offline updates (1-way push)</div>
-            <div>✓ Immediately recalculates student ratings, initial grades, and attendance online</div>
-            <div>✓ Preserves registered student accounts and self-service passwords</div>
+            {syncMode === 'pull' ? (
+              <>
+                <div>✓ Downloads latest online Excel grade sheets from AWS into your local Grades folder</div>
+                <div>✓ Automatically reloads and recalculates student ratings, records, and summaries locally</div>
+                <div>✓ Ideal when grade updates or edits occurred while using the online portal</div>
+              </>
+            ) : (
+              <>
+                <div>✓ Overwrites online Excel sheets with current offline updates (Offline ➔ AWS)</div>
+                <div>✓ Immediately recalculates student ratings, initial grades, and attendance online</div>
+                <div>✓ Preserves registered student accounts and self-service passwords</div>
+              </>
+            )}
           </div>
 
           {!cloudStatus.online && (
@@ -230,7 +283,9 @@ function OverviewPage() {
               style={{ width: 18, height: 18 }} 
             />
             <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-              I authorize updating the live AWS Cloud portal with offline Excel data.
+              {syncMode === 'pull' 
+                ? 'I authorize pulling latest online Excel data to update my local offline files.' 
+                : 'I authorize updating the live AWS Cloud portal with offline Excel data.'}
             </span>
           </label>
 
@@ -240,11 +295,17 @@ function OverviewPage() {
             </button>
             <button 
               className="btn btn-primary" 
-              onClick={handlePushToCloud} 
+              onClick={syncMode === 'pull' ? handlePullFromCloud : handlePushToCloud} 
               disabled={!authorizedConfirm || cloudSyncing}
               style={{ display: 'flex', alignItems: 'center', gap: 8 }}
             >
-              {cloudSyncing ? <><LoadingSpinner size="sm" /> Syncing to AWS...</> : <><CloudUpload size={16} /> Authorize & Push Now</>}
+              {cloudSyncing ? (
+                <><LoadingSpinner size="sm" /> {syncMode === 'pull' ? 'Pulling from AWS...' : 'Syncing to AWS...'}</>
+              ) : syncMode === 'pull' ? (
+                <><CloudDownload size={16} /> Authorize & Pull Now</>
+              ) : (
+                <><CloudUpload size={16} /> Authorize & Push Now</>
+              )}
             </button>
           </div>
         </div>
