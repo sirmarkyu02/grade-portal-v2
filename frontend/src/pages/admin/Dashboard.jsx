@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Users, BookOpen, FileUp, Settings, Trash2, Edit3, Plus, Download, RotateCcw, Search, ChevronRight, Eye, BarChart2, RefreshCw, FileSpreadsheet, Cloud, CloudUpload, CloudDownload, ExternalLink, Globe } from 'lucide-react';
-import { AppLayout, PageHeader, GradePill, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
+import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, ConfirmModal } from '../../components/Layout';
 import { useAuth } from '../../App';
 import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, ChevronDown, ChevronUp } from 'lucide-react';
 import api from '../../api';
@@ -1082,19 +1082,19 @@ function StudentsOverview() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
               <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--grad-main)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 700 }}>
-                {details.student.name.split(' ').map(p => p[0]).join('').slice(0, 2)}
+                {(details?.student?.name || 'ST').split(' ').filter(Boolean).map(p => p[0]).join('').slice(0, 2)}
               </div>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{details.student.name}</h3>
-                <p style={{ color: 'var(--text-muted)' }}>ID: {details.student.studentNo}</p>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>{details?.student?.name || 'Unknown Student'}</h3>
+                <p style={{ color: 'var(--text-muted)' }}>ID: {details?.student?.studentNo || '—'}</p>
                 <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.875rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={14} /> {details.student.subjects.length} Subjects</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><BookOpen size={14} /> {details?.student?.subjects?.length || 0} Subjects</span>
                 </div>
               </div>
               <button 
                 className="btn btn-primary btn-sm"
                 style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}
-                onClick={() => handleImpersonate({ studentNo: details.student.studentNo, name: details.student.name, section: details.student.subjects?.[0]?.info?.section })}
+                onClick={() => handleImpersonate({ studentNo: details?.student?.studentNo, name: details?.student?.name, section: details?.student?.subjects?.[0]?.info?.section })}
                 title="Impersonate and view portal as this student"
               >
                 <UserCheck size={14} />
@@ -1106,38 +1106,38 @@ function StudentsOverview() {
               <div className="card" style={{ padding: 16 }}>
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>Contact Info</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
-                  <p><strong>Contact No:</strong> {details.profile.contactNo || '—'}</p>
-                  <p><strong>Address:</strong> {details.profile.address || '—'}</p>
+                  <p><strong>Contact No:</strong> {details?.profile?.contactNo || '—'}</p>
+                  <p><strong>Address:</strong> {details?.profile?.address || '—'}</p>
                 </div>
               </div>
               <div className="card" style={{ padding: 16 }}>
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12 }}>Guardian Info</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: '0.875rem' }}>
-                  <p><strong>Name:</strong> {details.profile.parentName || '—'}</p>
-                  <p><strong>Contact No:</strong> {details.profile.parentContactNo || '—'}</p>
+                  <p><strong>Name:</strong> {details?.profile?.parentName || '—'}</p>
+                  <p><strong>Contact No:</strong> {details?.profile?.parentContactNo || '—'}</p>
                 </div>
               </div>
             </div>
 
             <div>
               <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Academic Performance</h4>
-              {details.student.subjects.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No subjects enrolled.</p> : (
+              {(!details?.student?.subjects || details.student.subjects.length === 0) ? <p style={{ color: 'var(--text-muted)' }}>No subjects enrolled.</p> : (
                 <div className="table-wrapper">
                   <table className="data-table">
                     <thead>
                       <tr><th>Subject</th><th>Section</th><th>T1 / PRE</th><th>T2 / MID</th><th>T3 / PF</th><th>T4 / FIN</th><th>Final</th><th>Remarks</th></tr>
                     </thead>
                     <tbody>
-                      {details.student.subjects.map((sub, i) => {
-                        const gs = sub.gradingSummary || {};
+                      {(details?.student?.subjects || []).map((sub, i) => {
+                        const gs = sub?.gradingSummary || {};
                         return (
                           <tr key={i}>
-                            <td style={{ fontWeight: 600 }}>{sub.info.subject}</td>
-                            <td>{sub.info.section}</td>
-                            <td><GradePill grade={gs.term1 || sub.terms?.['PRELIMS']?.summary?.transmutedGrade || sub.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term2 || sub.terms?.['MIDTERM']?.summary?.transmutedGrade || sub.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term3 || sub.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
-                            <td><GradePill grade={gs.term4 || sub.terms?.['FINALS']?.summary?.transmutedGrade || sub.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
+                            <td style={{ fontWeight: 600 }}>{sub?.info?.subject || '—'}</td>
+                            <td>{sub?.info?.section || '—'}</td>
+                            <td><GradePill grade={gs.term1 || sub?.terms?.['PRELIMS']?.summary?.transmutedGrade || sub?.terms?.['Term 1']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term2 || sub?.terms?.['MIDTERM']?.summary?.transmutedGrade || sub?.terms?.['Term 2']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term3 || sub?.terms?.['PRE-FINALS']?.summary?.transmutedGrade || sub?.terms?.['Term 3']?.summary?.transmutedGrade} /></td>
+                            <td><GradePill grade={gs.term4 || sub?.terms?.['FINALS']?.summary?.transmutedGrade || sub?.terms?.['Term 4']?.summary?.transmutedGrade} /></td>
                             <td><GradePill grade={gs.finalGrade} /></td>
                             <td>{gs.remarks ? (
                               <StatusBadge status={gs.remarks} />
