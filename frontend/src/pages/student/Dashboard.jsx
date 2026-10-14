@@ -1015,7 +1015,7 @@ function CollegeSubjectGrades({ subject }) {
                       </p>
                     </div>
                     <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.35rem' }}>
-                      {formatGradeNum(term.summary?.wwWS, '%')}
+                      {formatGradeNum(term.summary?.wwWS)}
                     </p>
                   </div>
                 )}
@@ -1029,7 +1029,7 @@ function CollegeSubjectGrades({ subject }) {
                       </p>
                     </div>
                     <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.35rem' }}>
-                      {formatGradeNum(term.summary?.ptWS, '%')}
+                      {formatGradeNum(term.summary?.ptWS)}
                     </p>
                   </div>
                 )}
@@ -1043,12 +1043,12 @@ function CollegeSubjectGrades({ subject }) {
                       </p>
                     </div>
                     <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.35rem' }}>
-                      {formatGradeNum(term.summary?.examWS, '%')}
+                      {formatGradeNum(term.summary?.examWS)}
                     </p>
                   </div>
                 )}
 
-                {/* Card 4: Initial Grade (Raw total percentage before transmutation) */}
+                {/* Card 4: Initial Grade (Raw total score before transmutation) */}
                 <div className="stat-card stat-card-sm" style={{ background: 'var(--grad-soft)', border: '1px solid var(--brand-200)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1058,11 +1058,11 @@ function CollegeSubjectGrades({ subject }) {
                       </p>
                     </div>
                     <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: 'var(--brand-100)', color: 'var(--brand-700)' }}>
-                      Raw %
+                      Raw Score
                     </span>
                   </div>
                   <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '1.35rem', color: 'var(--brand-700)' }}>
-                    {formatGradeNum(displayInitial, '%')}
+                    {formatGradeNum(displayInitial)}
                   </p>
                 </div>
 

@@ -2217,10 +2217,10 @@ function SubjectGrades({ subject }) {
               return (
                 <div className="grid-5">
                   {[
-                    { label: 'Quizzes (20% Wt)', value: term.summary?.wwWS !== null && term.summary?.wwWS !== undefined ? `${Number(term.summary.wwWS).toFixed(2)}%` : '—', icon: '📝' },
-                    { label: 'PT / Lab (30% Wt)', value: term.summary?.ptWS !== null && term.summary?.ptWS !== undefined ? `${Number(term.summary.ptWS).toFixed(2)}%` : '—', icon: '🎯' },
-                    { label: 'Major Exam (50% Wt)', value: term.summary?.examWS !== null && term.summary?.examWS !== undefined ? `${Number(term.summary.examWS).toFixed(2)}%` : '—', icon: '📋' },
-                    { label: 'Initial Grade', value: displayInitial !== null && displayInitial !== undefined ? `${Number(displayInitial).toFixed(2)}%` : '—', icon: '📊', isInitial: true },
+                    { label: 'Quizzes (20% Wt)', value: term.summary?.wwWS !== null && term.summary?.wwWS !== undefined ? `${Number(term.summary.wwWS).toFixed(2)}` : '—', icon: '📝' },
+                    { label: 'PT / Lab (30% Wt)', value: term.summary?.ptWS !== null && term.summary?.ptWS !== undefined ? `${Number(term.summary.ptWS).toFixed(2)}` : '—', icon: '🎯' },
+                    { label: 'Major Exam (50% Wt)', value: term.summary?.examWS !== null && term.summary?.examWS !== undefined ? `${Number(term.summary.examWS).toFixed(2)}` : '—', icon: '📋' },
+                    { label: 'Initial Grade', value: displayInitial !== null && displayInitial !== undefined ? `${Number(displayInitial).toFixed(2)}` : '—', icon: '📊', isInitial: true },
                     { label: 'Term Rating (EQV)', value: term.summary?.transmutedGrade ?? '—', icon: '🏆', isGrade: true },
                   ].map((s, i) => (
                     <div key={i} className="stat-card stat-card-sm" style={s.isInitial ? { background: 'var(--grad-soft)', border: '1px solid var(--brand-200)' } : s.isGrade ? { background: 'var(--grad-soft)', border: '1px solid var(--violet-200)' } : {}}>
