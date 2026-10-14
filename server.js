@@ -8,8 +8,47 @@ const multer = require('multer');
 const archiver = require('archiver');
 const { v4: uuidv4 } = require('uuid');
 
+// ─── XlsxPopulate Setup & Formula Preservation Patch ──────────────────────────
+const XlsxPopulate = require('xlsx-populate');
+const Cell = require('xlsx-populate/lib/Cell');
+const dateConverter = require('xlsx-populate/lib/dateConverter');
+const RichText = require('xlsx-populate/lib/RichText');
+const _ = require('lodash');
+
+// CRITICAL FIX: Patch Cell.prototype.toXml so xlsx-populate emits the cached <v>
+// value even when a formula is present. Without this, saving ANY workbook strips
+// all <v> tags from formula cells, causing SheetJS to read them as null/undefined.
+const origCellToXml = Cell.prototype.toXml;
+Cell.prototype.toXml = function() {
+  const node = origCellToXml.call(this);
+  if (!_.isNil(this._formulaType) && !_.isNil(this._value)) {
+    const hasV = node.children && node.children.some(c => c && c.name === 'v');
+    if (!hasV) {
+      let type, text;
+      if (typeof this._value === 'string') {
+        type = 's';
+        text = this.workbook().sharedStrings().getIndexForString(this._value);
+      } else if (typeof this._value === 'boolean') {
+        type = 'b';
+        text = this._value ? 1 : 0;
+      } else if (typeof this._value === 'number') {
+        text = this._value;
+      } else if (this._value instanceof Date) {
+        text = dateConverter.dateToNumber(this._value);
+      } else if (this._value instanceof RichText || (typeof this._value === 'object' && this._value.constructor && this._value.constructor.name === 'RichText')) {
+        type = 's';
+        text = this.workbook().sharedStrings().getIndexForString(this._value.toXml());
+      }
+      if (type) node.attributes.t = type;
+      node.children.push({ name: 'v', children: [text] });
+    }
+  }
+  return node;
+};
+
 const app = express();
 const PORT = 3001;
+
 
 // ─── Directory Paths ────────────────────────────────────────────────────────
 const ROOT = __dirname;
@@ -427,34 +466,53 @@ function parseTertiaryFile(wb, fname) {
     }
   }
 
+
   const termDefinitions = [
-    { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16 },
-    { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29 },
-    { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42 },
-    { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55 }
+    { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16, settingsCol: 8 },
+    { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29, settingsCol: 12 },
+    { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42, settingsCol: 16 },
+    { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55, settingsCol: 20 }
   ];
+
+  const resolveHps = (c, sRow, sCol) => {
+    let hps = cell(wsInput, 5, c);
+    if (hps && typeof hps === 'number' && hps > 0) return hps;
+    const addr = XLSX.utils.encode_cell({ r: 5, c });
+    const f = wsInput && wsInput[addr]?.f;
+    if (f && wsSettings) {
+      const m = f.match(/Settings!([A-Z0-9]+)/);
+      if (m && wsSettings[m[1]] && !isNaN(Number(wsSettings[m[1]].v)) && Number(wsSettings[m[1]].v) > 0) {
+        return Number(wsSettings[m[1]].v);
+      }
+    }
+    if (wsSettings && sRow !== undefined && sCol !== undefined) {
+      const sVal = cell(wsSettings, sRow, sCol);
+      if (sVal && !isNaN(Number(sVal)) && Number(sVal) > 0) return Number(sVal);
+    }
+    return null;
+  };
 
   const terms = {};
   termDefinitions.forEach(td => {
     const wsTerm = wb.Sheets[td.name];
     const ptItems = [];
-    td.ptCols.forEach(c => {
-      const hps = cell(wsInput, 5, c);
-      if (hps && typeof hps === 'number' && hps > 0) {
-        ptItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `PRC${c - td.ptCols[0] + 1}`) });
+    td.ptCols.forEach((c, idx) => {
+      const hps = resolveHps(c, 28 + idx, td.settingsCol);
+      if (hps && hps > 0) {
+        ptItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `PRC${idx + 1}`) });
       }
     });
 
     const quizItems = [];
-    td.quizCols.forEach(c => {
-      const hps = cell(wsInput, 5, c);
-      if (hps && typeof hps === 'number' && hps > 0) {
-        quizItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `Q${c - td.quizCols[0] + 1}`) });
+    td.quizCols.forEach((c, idx) => {
+      const hps = resolveHps(c, 33 + idx, td.settingsCol);
+      if (hps && hps > 0) {
+        quizItems.push({ col: c, hps, label: String(cell(wsInput, 4, c) || `Q${idx + 1}`) });
       }
     });
 
-    const examHps = cell(wsInput, 5, td.examCol);
-    const examItem = (examHps && typeof examHps === 'number' && examHps > 0) ? {
+    const examHps = resolveHps(td.examCol, 38, td.settingsCol);
+    const examItem = (examHps && examHps > 0) ? {
       col: td.examCol,
       hps: examHps,
       label: String(cell(wsInput, 4, td.examCol) || 'Major Exam')
@@ -519,39 +577,69 @@ function parseTertiaryFile(wb, fname) {
       const rawTransmuted = wsTerm ? cell(wsTerm, tr, eqvCol) : null;
       const rawRank = wsTerm ? cell(wsTerm, tr, rankCol) : null;
 
-      let ptWS = typeof rawPtWS === 'number' ? round2(rawPtWS) : (rawPtWS !== null && rawPtWS !== '' && !isNaN(Number(rawPtWS)) ? round2(Number(rawPtWS)) : null);
-      let wwWS = typeof rawWwWS === 'number' ? round2(rawWwWS) : (rawWwWS !== null && rawWwWS !== '' && !isNaN(Number(rawWwWS)) ? round2(Number(rawWwWS)) : null);
-      let examWS = typeof rawExamWS === 'number' ? round2(rawExamWS) : (rawExamWS !== null && rawExamWS !== '' && !isNaN(Number(rawExamWS)) ? round2(Number(rawExamWS)) : null);
+      const ptWeight = subjectInfo.weights.performanceTask || 0.3;
+      const wwWeight = subjectInfo.weights.writtenOral || 0.2;
+      const examWeight = subjectInfo.weights.termExam || 0.5;
 
-      if (ptWS === null && performanceTasks.length > 0) {
-        let ptTot = 0, ptMax = 0, hasPt = false;
-        performanceTasks.forEach(p => { ptMax += (p.hps || 0); if (p.score !== null && p.score !== undefined && p.score !== '') { ptTot += Number(p.score); hasPt = true; } });
-        if (hasPt && ptMax > 0) ptWS = round2((ptTot / ptMax) * 100 * (subjectInfo.weights.performanceTask || 0.3));
+      // Check if student has PT scores
+      let hasPtScore = false;
+      let ptPctsSum = 0;
+      if (performanceTasks.length > 0) {
+        performanceTasks.forEach(p => {
+          if (p.score !== null && p.score !== undefined && p.score !== '' && !isNaN(Number(p.score))) {
+            hasPtScore = true;
+            ptPctsSum += (Number(p.score) / p.hps) * 100;
+          }
+        });
       }
-      if (wwWS === null && quizzes.length > 0) {
-        let wwTot = 0, wwMax = 0, hasWw = false;
-        quizzes.forEach(q => { wwMax += (q.hps || 0); if (q.score !== null && q.score !== undefined && q.score !== '') { wwTot += Number(q.score); hasWw = true; } });
-        if (hasWw && wwMax > 0) wwWS = round2((wwTot / wwMax) * 100 * (subjectInfo.weights.writtenOral || 0.2));
+      let ptWS = null;
+      if (hasPtScore && performanceTasks.length > 0) {
+        ptWS = round2((ptPctsSum / performanceTasks.length) * ptWeight);
+      } else if (rawPtWS !== null && rawPtWS !== '' && !isNaN(Number(rawPtWS))) {
+        ptWS = round2(Number(rawPtWS));
       }
-      if (examWS === null && exams['EX']) {
-        const ex = exams['EX'];
-        if (ex.score !== null && ex.score !== undefined && ex.score !== '' && ex.hps > 0) {
-          examWS = round2((Number(ex.score) / ex.hps) * 100 * (subjectInfo.weights.termExam || 0.5));
+
+      // Check if student has Quiz scores
+      let hasWwScore = false;
+      let wwPctsSum = 0;
+      if (quizzes.length > 0) {
+        quizzes.forEach(q => {
+          if (q.score !== null && q.score !== undefined && q.score !== '' && !isNaN(Number(q.score))) {
+            hasWwScore = true;
+            wwPctsSum += (Number(q.score) / q.hps) * 100;
+          }
+        });
+      }
+      let wwWS = null;
+      if (hasWwScore && quizzes.length > 0) {
+        wwWS = round2((wwPctsSum / quizzes.length) * wwWeight);
+      } else if (rawWwWS !== null && rawWwWS !== '' && !isNaN(Number(rawWwWS))) {
+        wwWS = round2(Number(rawWwWS));
+      }
+
+      // Check Exam score
+      let examWS = null;
+      if (exams['EX']) {
+        const exSc = exams['EX'].score;
+        if (exSc !== null && exSc !== undefined && exSc !== '' && !isNaN(Number(exSc))) {
+          examWS = round2((Number(exSc) / exams['EX'].hps) * 100 * examWeight);
+        } else if (rawExamWS !== null && rawExamWS !== '' && !isNaN(Number(rawExamWS))) {
+          examWS = round2(Number(rawExamWS));
         }
       }
 
-      let initialGrade = typeof rawInitial === 'number' ? round2(rawInitial) : (rawInitial !== null && rawInitial !== '' && !isNaN(Number(rawInitial)) ? round2(Number(rawInitial)) : null);
-      // Fallback calculation like in SHS
-      if (initialGrade === null) {
-        const hasScores = (ptWS !== null || wwWS !== null || examWS !== null);
-        if (hasScores) {
-          initialGrade = round2((ptWS || 0) + (wwWS || 0) + (examWS || 0));
-        }
+      let initialGrade = null;
+      if (hasPtScore || hasWwScore || examWS !== null) {
+        initialGrade = round2((ptWS || 0) + (wwWS || 0) + (examWS || 0));
+      } else if (rawInitial !== null && rawInitial !== '' && !isNaN(Number(rawInitial))) {
+        initialGrade = round2(Number(rawInitial));
       }
 
-      let transmutedGrade = typeof rawTransmuted === 'number' ? round2(rawTransmuted) : (rawTransmuted !== null && String(rawTransmuted).trim() !== '' && String(rawTransmuted).trim() !== '-' ? rawTransmuted : null);
-      if ((transmutedGrade === null || transmutedGrade === '') && initialGrade !== null) {
+      let transmutedGrade = null;
+      if (initialGrade !== null) {
         transmutedGrade = getTertiaryTransmuted(initialGrade);
+      } else if (rawTransmuted !== null && String(rawTransmuted).trim() !== '' && String(rawTransmuted).trim() !== '-') {
+        transmutedGrade = rawTransmuted;
       }
 
       const rank = rawRank !== null && rawRank !== undefined && String(rawRank).trim() !== '' ? rawRank : null;
@@ -656,12 +744,37 @@ function parseTertiaryFile(wb, fname) {
   const gradingSummary = {};
   for (const stu of studentsList) {
     const sr = stu.summaryRow;
-    const prelimVal = cell(wsSummary, sr, 8);
-    const midtermVal = cell(wsSummary, sr, 10);
-    const preFinalVal = cell(wsSummary, sr, 12);
-    const finalVal = cell(wsSummary, sr, 14);
-    const finalGrade = cell(wsSummary, sr, 18);
-    const remarks = cell(wsSummary, sr, 19) || '';
+    const pStu = terms['PRELIMS']?.find(s => s.studentNo === stu.studentNo);
+    const mStu = terms['MIDTERM']?.find(s => s.studentNo === stu.studentNo);
+    const pfStu = terms['PRE-FINALS']?.find(s => s.studentNo === stu.studentNo);
+    const fStu = terms['FINALS']?.find(s => s.studentNo === stu.studentNo);
+
+    const rawPrelim = wsSummary ? cell(wsSummary, sr, 8) : null;
+    const rawMidterm = wsSummary ? cell(wsSummary, sr, 10) : null;
+    const rawPreFinal = wsSummary ? cell(wsSummary, sr, 12) : null;
+    const rawFinal = wsSummary ? cell(wsSummary, sr, 14) : null;
+    const rawFinalGrade = wsSummary ? cell(wsSummary, sr, 18) : null;
+    const rawRemarks = wsSummary ? cell(wsSummary, sr, 19) : '';
+
+    const prelimVal = pStu?.summary?.transmutedGrade ?? rawPrelim ?? null;
+    const midtermVal = mStu?.summary?.transmutedGrade ?? rawMidterm ?? null;
+    const preFinalVal = pfStu?.summary?.transmutedGrade ?? rawPreFinal ?? null;
+    const finalVal = fStu?.summary?.transmutedGrade ?? rawFinal ?? null;
+
+    let finalGrade = (rawFinalGrade !== null && rawFinalGrade !== '' && !isNaN(Number(rawFinalGrade))) ? Number(rawFinalGrade) : null;
+    if (finalGrade === null) {
+      const valid = [prelimVal, midtermVal, preFinalVal, finalVal].filter(v => v !== null && typeof v === 'number');
+      if (valid.length === 4) {
+        finalGrade = round2(prelimVal * 0.2 + midtermVal * 0.2 + preFinalVal * 0.2 + finalVal * 0.4);
+      } else if (valid.length > 0) {
+        finalGrade = round2(valid.reduce((a, b) => a + b, 0) / valid.length);
+      }
+    }
+
+    let remarks = rawRemarks || '';
+    if (!remarks && finalGrade !== null) {
+      remarks = finalGrade <= 3.0 ? 'Passed' : 'Failed';
+    }
 
     gradingSummary[stu.studentNo] = {
       studentName: stu.studentName,
@@ -671,10 +784,10 @@ function parseTertiaryFile(wb, fname) {
       term4: finalVal,
       finalGrade,
       remarks,
-      prelims: { pct: cell(wsSummary, sr, 7), eqv: prelimVal },
-      midterm: { pct: cell(wsSummary, sr, 9), eqv: midtermVal },
-      preFinals: { pct: cell(wsSummary, sr, 11), eqv: preFinalVal },
-      finals: { pct: cell(wsSummary, sr, 13), eqv: finalVal }
+      prelims: { pct: pStu?.summary?.initialGrade ?? (wsSummary ? cell(wsSummary, sr, 7) : null), eqv: prelimVal },
+      midterm: { pct: mStu?.summary?.initialGrade ?? (wsSummary ? cell(wsSummary, sr, 9) : null), eqv: midtermVal },
+      preFinals: { pct: pfStu?.summary?.initialGrade ?? (wsSummary ? cell(wsSummary, sr, 11) : null), eqv: preFinalVal },
+      finals: { pct: fStu?.summary?.initialGrade ?? (wsSummary ? cell(wsSummary, sr, 13) : null), eqv: finalVal }
     };
   }
 
@@ -1263,13 +1376,6 @@ app.put('/api/teacher/class/:filename/batch-update', requireAuth(['teacher']), a
             c.value((update.value === '' || update.value === null) ? null : update.value);
           } else {
             c.value((update.value === '' || update.value === null) ? null : Number(update.value));
-            if (update.hps !== undefined && update.hps !== null && update.hps !== '') {
-              sheet.cell(6, update.col + 1).value(Number(update.hps));
-            }
-            if (update.label) {
-              const labelRow = isTertiary ? 5 : 8;
-              sheet.cell(labelRow, update.col + 1).value(update.label);
-            }
           }
         }
       }
@@ -1323,7 +1429,7 @@ app.get('/api/teacher/class/:filename/full', requireAuth(['teacher']), (req, res
   const classStudents = [];
   for (const [studentNo, data] of Object.entries(studentsMap)) {
     const sub = data.subjects.find(s => s.info.fileName === filename);
-    if (sub) classStudents.push({ studentNo, name: data.name, terms: sub.terms, info: sub.info, attendance: sub.attendance });
+    if (sub) classStudents.push({ studentNo, name: data.name, terms: sub.terms, info: sub.info, attendance: sub.attendance, gradingSummary: sub.gradingSummary });
   }
   classStudents.sort((a, b) => a.name.localeCompare(b.name));
   const classSettings = { hideTerm1: false, hideTerm2: true, hideTerm3: true, hideTerm4: true, hideAttendance: false, hideBreakdown: {}, blockedStudents: [], releaseFinals: {}, ...(classSettingsConfig[filename] || {}) };
@@ -1345,31 +1451,48 @@ app.get('/api/teacher/class/:filename/headers', requireAuth(['teacher']), (req, 
 
     if (type === 'tertiary') {
       const wsInput = wb.Sheets['Input'];
+      const wsSettings = wb.Sheets['Settings'];
       const termDefs = [
-        { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16 },
-        { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29 },
-        { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42 },
-        { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55 }
+        { name: 'PRELIMS', ptCols: [6, 7, 8, 9], quizCols: [11, 12, 13, 14], examCol: 16, settingsCol: 8 },
+        { name: 'MIDTERM', ptCols: [19, 20, 21, 22], quizCols: [24, 25, 26, 27], examCol: 29, settingsCol: 12 },
+        { name: 'PRE-FINALS', ptCols: [32, 33, 34, 35], quizCols: [37, 38, 39, 40], examCol: 42, settingsCol: 16 },
+        { name: 'FINALS', ptCols: [45, 46, 47, 48], quizCols: [50, 51, 52, 53], examCol: 55, settingsCol: 20 }
       ];
+      const resolveHps = (c, sRow, sCol) => {
+        const aHps = XLSX.utils.encode_cell({ r: 5, c });
+        let h = wsInput && wsInput[aHps]?.v;
+        if (h && typeof h === 'number' && h > 0) return h;
+        const f = wsInput && wsInput[aHps]?.f;
+        if (f && wsSettings) {
+          const m = f.match(/Settings!([A-Z0-9]+)/);
+          if (m && wsSettings[m[1]] && !isNaN(Number(wsSettings[m[1]].v)) && Number(wsSettings[m[1]].v) > 0) {
+            return Number(wsSettings[m[1]].v);
+          }
+        }
+        if (wsSettings && sRow !== undefined && sCol !== undefined) {
+          const sVal = wsSettings[XLSX.utils.encode_cell({ r: sRow, c: sCol })]?.v;
+          if (sVal && !isNaN(Number(sVal)) && Number(sVal) > 0) return Number(sVal);
+        }
+        return null;
+      };
+
       const columns = {};
       const attendance = [];
 
       termDefs.forEach(td => {
         const pt = td.ptCols.map((c, i) => {
-          const aHps = XLSX.utils.encode_cell({ r: 5, c });
           const aLbl = XLSX.utils.encode_cell({ r: 4, c });
-          return { col: c, hps: wsInput[aHps]?.v ?? null, label: String(wsInput[aLbl]?.v || `PRC${i + 1}`) };
+          return { col: c, hps: resolveHps(c, 28 + i, td.settingsCol), label: String(wsInput && wsInput[aLbl]?.v || `PRC${i + 1}`) };
         });
         const ww = td.quizCols.map((c, i) => {
-          const aHps = XLSX.utils.encode_cell({ r: 5, c });
           const aLbl = XLSX.utils.encode_cell({ r: 4, c });
-          return { col: c, hps: wsInput[aHps]?.v ?? null, label: String(wsInput[aLbl]?.v || `Q${i + 1}`) };
+          return { col: c, hps: resolveHps(c, 33 + i, td.settingsCol), label: String(wsInput && wsInput[aLbl]?.v || `Q${i + 1}`) };
         });
         const exam = [{
           col: td.examCol,
           key: 'EX',
-          hps: wsInput[XLSX.utils.encode_cell({ r: 5, c: td.examCol })]?.v ?? null,
-          label: String(wsInput[XLSX.utils.encode_cell({ r: 4, c: td.examCol })]?.v || 'Major Exam')
+          hps: resolveHps(td.examCol, 38, td.settingsCol),
+          label: String(wsInput && wsInput[XLSX.utils.encode_cell({ r: 4, c: td.examCol })]?.v || 'Major Exam')
         }];
         columns[td.name] = { ww, pt, exam };
 
@@ -1565,11 +1688,17 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
     const XLSX = require('xlsx');
     const fpath = path.join(GRADES_DIR, filename);
     const workbook = await XlsxPopulate.fromFileAsync(fpath);
-    const wbSheetJS = XLSX.readFile(fpath);
-
     for (const update of updates) {
       const isTertiary = !!workbook.sheet('Input') && !!workbook.sheet('Settings');
-      const targetSheetName = (isTertiary && update.termName !== 'Attendance') ? 'Input' : update.termName;
+      let targetSheetName;
+      if (update.sheet) {
+        targetSheetName = update.sheet;
+      } else if (isTertiary) {
+        targetSheetName = (update.termName === 'Attendance' ? (update.term || 'PRELIMS') : 'Input');
+      } else {
+        targetSheetName = update.termName;
+      }
+
       const sheet = workbook.sheet(targetSheetName);
       if (sheet) {
         const c = sheet.cell(update.row + 1, update.col + 1);
@@ -1577,107 +1706,6 @@ app.put('/api/teacher/class/:filename/student/:studentNo', requireAuth(['teacher
           c.value((update.value === '' || update.value === null) ? null : update.value);
         } else {
           c.value((update.value === '' || update.value === null) ? null : Number(update.value));
-          if (update.hps !== undefined && update.hps !== null && update.hps !== '') sheet.cell(6, update.col + 1).value(Number(update.hps));
-          if (update.label) sheet.cell(isTertiary ? 5 : 8, update.col + 1).value(update.label);
-        }
-        
-        if (studentsMap[studentNo]) {
-          const sub = studentsMap[studentNo].subjects.find(s => s.info.fileName === filename);
-          if (sub && update.termName === 'Attendance' && sub.attendance) {
-             const record = sub.attendance.records.find(r => r.col === update.col); // wait, parseAttendance records don't have col saved! Let's check parseAttendance.
-             // I'll just rely on `loadAllData()` explicitly being called after await workbook.toFileAsync(fpath); 
-             // That's much safer than trying to keep track of attendance manually here.
-          } else if (sub && sub.terms[update.termName]) {
-            const term = sub.terms[update.termName];
-            for (const key of ['performanceTasks', 'writtenWorks']) {
-              if (term[key]) {
-                 const item = term[key].find(i => i.col === update.col);
-                 if (item) item.score = update.value === null ? null : Number(update.value);
-              }
-            }
-            if (term.exams) {
-              for (const exam of Object.values(term.exams)) {
-                if (exam.col === update.col) exam.score = update.value === null ? null : Number(update.value);
-              }
-            }
-            
-            const wsTerm = wbSheetJS.Sheets[update.termName];
-            const getVal = (r, c) => {
-              const addr = XLSX.utils.encode_cell({ r: r - 1, c: c - 1 });
-              return wsTerm && wsTerm[addr] ? wsTerm[addr].v : null;
-            };
-            const wwW = getVal(6, 27) || 0.2;
-            const ptW = getVal(6, 45) || 0.5;
-            const exW = getVal(7, 53) || 0.3;
-            
-            let hasScore = false;
-            let wT=0, wM=0;
-            term.writtenWorks.forEach(w => { wM += w.hps; if (w.score !== null && w.score !== undefined) { wT += w.score; hasScore = true; } });
-            const wPS = wM > 0 ? (wT / wM) * 100 : 0;
-            const wWS = wPS * wwW;
-
-            let pT=0, pM=0;
-            term.performanceTasks.forEach(p => { pM += p.hps; if (p.score !== null && p.score !== undefined) { pT += p.score; hasScore = true; } });
-            const pPS = pM > 0 ? (pT / pM) * 100 : 0;
-            const pWS = pPS * ptW;
-
-            let eT=0, eM=0;
-            Object.values(term.exams).forEach(e => { eM += e.hps; if (e.score !== null && e.score !== undefined) { eT += e.score; hasScore = true; } });
-            const ePS = eM > 0 ? (eT / eM) * 100 : 0;
-            const eWS = ePS * exW;
-
-            const iG = hasScore ? Math.round((wWS + pWS + eWS) * 100) / 100 : null;
-            
-            const getTransmuted = (initial) => {
-              if (initial >= 99.5) return 100; if (initial >= 98.32) return 99; if (initial >= 97.14) return 98;
-              if (initial >= 95.96) return 97; if (initial >= 94.78) return 96; if (initial >= 93.6) return 95;
-              if (initial >= 92.42) return 94; if (initial >= 91.24) return 93; if (initial >= 90.06) return 92;
-              if (initial >= 88.88) return 91; if (initial >= 87.7) return 90; if (initial >= 86.52) return 89;
-              if (initial >= 85.34) return 88; if (initial >= 84.16) return 87; if (initial >= 82.98) return 86;
-              if (initial >= 81.8) return 85; if (initial >= 80.62) return 84; if (initial >= 79.44) return 83;
-              if (initial >= 78.26) return 82; if (initial >= 77.08) return 81; if (initial >= 75.9) return 80;
-              if (initial >= 74.72) return 79; if (initial >= 73.54) return 78; if (initial >= 72.36) return 77;
-              if (initial >= 71.18) return 76; if (initial >= 70) return 75; if (initial >= 65.34) return 74;
-              if (initial >= 60.67) return 73; if (initial >= 56.01) return 72; if (initial >= 51.34) return 71;
-              if (initial >= 46.67) return 70; if (initial >= 42.01) return 69; if (initial >= 37.34) return 68;
-              if (initial >= 32.68) return 67; if (initial >= 28.01) return 66; if (initial >= 23.35) return 65;
-              if (initial >= 18.68) return 64; if (initial >= 14.01) return 63; if (initial >= 9.35) return 62;
-              if (initial >= 4.68) return 61; return 60;
-            };
-            const tG = hasScore ? getTransmuted(iG) : null;
-            
-            let st = null;
-            if (hasScore) {
-              st = "Failed [E]";
-              if (tG >= 90) st = "Passed [A]";
-              else if (tG >= 80) st = "Passed [B]";
-              else if (tG >= 75) st = "Passed [C]";
-              else if (tG >= 65) st = "Failed [D]";
-            }
-
-            term.summary = {
-              wwTotal: wT, wwPS: Math.round(wPS * 100) / 100, wwWS: Math.round(wWS * 100) / 100,
-              ptTotal: pT, ptPS: Math.round(pPS * 100) / 100, ptWS: Math.round(pWS * 100) / 100,
-              examWS: Math.round(eWS * 100) / 100, initialGrade: iG, transmutedGrade: tG, status: st
-            };
-
-            const t1 = sub.terms['Term 1']?.summary?.transmutedGrade ?? null;
-            const t2 = sub.terms['Term 2']?.summary?.transmutedGrade ?? null;
-            const t3 = sub.terms['Term 3']?.summary?.transmutedGrade ?? null;
-            const t4 = sub.terms['Term 4']?.summary?.transmutedGrade ?? null;
-            const validTerms = [t1, t2, t3, t4].filter(t => t !== null);
-            const finalGrade = validTerms.length > 0 ? Math.round(validTerms.reduce((a,b)=>a+b, 0) / validTerms.length) : null;
-            
-            let remarks = "";
-            if (finalGrade !== null) {
-              if (finalGrade >= 90) remarks = "Passed [Outstanding]";
-              else if (finalGrade >= 85) remarks = "Passed [Very Satisfactory]";
-              else if (finalGrade >= 80) remarks = "Passed [Satisfactory]";
-              else if (finalGrade >= 75) remarks = "Passed [Fairly Satisfactory]";
-              else remarks = "Failed [Did Not Meet Expectations]";
-            }
-            sub.gradingSummary = { term1: t1, term2: t2, term3: t3, term4: t4, finalGrade, remarks };
-          }
         }
       }
     }

@@ -930,13 +930,13 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
     loadClassData().finally(() => setLoading(false));
   }, [loadClassData]);
 
-  const updateScore = (studentNo, termName, col, row, hps, label, value) => {
+  const updateScore = (studentNo, termName, col, row, hps, label, value, sheet) => {
     setChanges(prev => {
       const key = `${studentNo}-${termName}-${col}`;
       const newChanges = { ...prev };
       if (!newChanges[studentNo]) newChanges[studentNo] = {};
       if (!newChanges[studentNo][termName]) newChanges[studentNo][termName] = {};
-      newChanges[studentNo][termName][key] = { studentNo, termName, col, row, hps, label, value };
+      newChanges[studentNo][termName][key] = { studentNo, termName, col, row, hps, label, value, sheet };
       return newChanges;
     });
   };
@@ -1065,7 +1065,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                                 title="P: Present, A: Absent, L: Late, E: Excused"
                                 onChange={e => {
                                   let inputVal = e.target.value.toUpperCase();
-                                  updateScore(student.studentNo, 'Attendance', item.col, item.row, null, null, inputVal);
+                                  updateScore(student.studentNo, 'Attendance', item.col, item.row, null, null, inputVal, item.sheet);
                                 }}
                               />
                             ) : (
@@ -1075,7 +1075,7 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                                 className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
                                 disabled={isTermLocked(termName)}
                                 value={val ?? ''}
-                                onChange={e => updateScore(student.studentNo, termName, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
+                                onChange={e => updateScore(student.studentNo, termName, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value), item.sheet)}
                               />
                             )}
                           </td>
@@ -1441,32 +1441,26 @@ function GradeEditModal({ classInfo, onClose, initialMode = 'table' }) {
                             </>
                           ) : (
                             // Component-specific editable cells
-                            (() => {
-                              let items = [];
-                              const rawItems = s.terms?.[activeTermTab]?.[activeComponentTab === 'ww' ? 'writtenWorks' : activeComponentTab === 'pt' ? 'performanceTasks' : 'exams'];
-                              items = Array.isArray(rawItems) ? rawItems : Object.values(rawItems || {});
-                              
-                              return items.map((item, colIdx) => {
-                                const val = getScore(s.studentNo, activeTermTab, item.col, item.score);
-                                const changed = val !== item.score;
-                                return (
-                                  <td key={colIdx} style={{ textAlign: 'center' }}>
-                                    <input
-                                      type="number" min="0" max={item.hps} step="0.25"
-                                      inputMode="decimal"
-                                      data-row={i}
-                                      data-col={colIdx}
-                                      className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
-                                      style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
-                                      disabled={isTermLocked(activeTermTab)}
-                                      value={val ?? ''}
-                                      onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
-                                      onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value))}
-                                    />
-                                  </td>
-                                );
-                              });
-                            })()
+                            items.map((item, colIdx) => {
+                              const val = getScore(s.studentNo, activeTermTab, item.col, item.score);
+                              const changed = val !== item.score;
+                              return (
+                                <td key={colIdx} style={{ textAlign: 'center' }}>
+                                  <input
+                                    type="number" min="0" max={item.hps} step="0.25"
+                                    inputMode="decimal"
+                                    data-row={i}
+                                    data-col={colIdx}
+                                    className={`score-input ${changed ? 'changed' : ''} ${val > item.hps ? 'error-cell' : ''}`}
+                                    style={{ width: '80px', margin: '0 auto', textAlign: 'center' }}
+                                    disabled={isTermLocked(activeTermTab)}
+                                    value={val ?? ''}
+                                    onKeyDown={(e) => handleKeyDown(e, i, colIdx, filtered.length - 1, items.length - 1)}
+                                    onChange={e => updateScore(s.studentNo, activeTermTab, item.col, item.row, item.hps, item.label, e.target.value === '' ? null : parseFloat(e.target.value), item.sheet)}
+                                  />
+                                </td>
+                              );
+                            })
                           )}
                         </tr>
                       );
