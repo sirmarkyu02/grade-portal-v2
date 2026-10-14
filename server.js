@@ -116,8 +116,13 @@ function reloadAll() {
     gradeRelease: { 'Term 1': true, 'Term 2': true, 'Term 3': true, 'Term 4': true },
     schoolInfo: { name: '', address: '', contact: '' },
     notification: { enabled: false, message: '' },
-    features: { grades: true, attendance: true }, sessionTimeout: 7200000
+    features: { grades: true, attendance: true }, sessionTimeout: 7200000,
+    updatedAt: new Date().toISOString()
   });
+  if (!settingsConfig.updatedAt) {
+    settingsConfig.updatedAt = new Date().toISOString();
+    saveJSON(SETTINGS_FILE, settingsConfig);
+  }
   teachersConfig = loadJSON(TEACHERS_FILE);
   passwordsConfig = loadJSON(PASSWORDS_FILE);
   studentProfilesConfig = loadJSON(STUDENT_PROFILES_FILE);
@@ -135,10 +140,59 @@ reloadAll();
     .on('change', () => reloadAll());
 });
 
-// ─── Session Management ──────────────────────────────────────────────────────
-function createSession(userId, role, meta = {}) {
+// ─── Session Management & Device Parsing ──────────────────────────────────────
+function getClientDetails(req) {
+  if (!req) return { ip: '127.0.0.1', device: 'Desktop', browser: 'System', os: 'System', ua: '' };
+  
+  let rawIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || req.ip || '127.0.0.1';
+  let ip = '127.0.0.1';
+  if (typeof rawIp === 'string') {
+    ip = rawIp.split(',')[0].trim().replace(/^::ffff:/, '');
+    if (ip === '::1') ip = '127.0.0.1';
+  }
+
+  const ua = req.headers['user-agent'] || '';
+  let device = 'Desktop';
+  let os = 'Unknown OS';
+  let browser = 'Browser';
+
+  if (/mobile|android.*mobile|iphone|ipod/i.test(ua)) {
+    device = 'Mobile';
+  } else if (/tablet|ipad|android(?!.*mobile)/i.test(ua)) {
+    device = 'Tablet';
+  }
+
+  if (/windows nt 10/i.test(ua)) os = 'Windows 10/11';
+  else if (/windows/i.test(ua)) os = 'Windows';
+  else if (/iphone|ipad|ipod/i.test(ua)) os = 'iOS';
+  else if (/macintosh|mac os x/i.test(ua)) os = 'macOS';
+  else if (/android/i.test(ua)) os = 'Android';
+  else if (/linux/i.test(ua)) os = 'Linux';
+
+  if (/edg/i.test(ua)) browser = 'Edge';
+  else if (/chrome|crios/i.test(ua)) browser = 'Chrome';
+  else if (/firefox|fxios/i.test(ua)) browser = 'Firefox';
+  else if (/safari/i.test(ua) && !/chrome|crios/i.test(ua)) browser = 'Safari';
+  else if (/opr|opera/i.test(ua)) browser = 'Opera';
+
+  return { ip, device, browser, os, ua };
+}
+
+function createSession(userId, role, meta = {}, req = null) {
   const token = uuidv4();
-  sessions[token] = { userId, role, meta, createdAt: Date.now(), lastActive: Date.now() };
+  const client = getClientDetails(req);
+  sessions[token] = {
+    userId,
+    role,
+    meta,
+    ip: client.ip,
+    device: client.device,
+    browser: client.browser,
+    os: client.os,
+    userAgent: client.ua,
+    createdAt: Date.now(),
+    lastActive: Date.now()
+  };
   saveJSON(SESSIONS_FILE, sessions);
   return token;
 }
@@ -163,9 +217,33 @@ function destroySession(token) {
   }
 }
 
-function logActivity(userId, role, action, details) {
-  activityLogs.unshift({ id: uuidv4(), userId, role, action, details, timestamp: new Date().toISOString() });
-  if (activityLogs.length > 1000) activityLogs = activityLogs.slice(0, 1000);
+function logActivity(userId, role, action, details, meta = {}, req = null) {
+  const client = getClientDetails(req);
+  
+  let category = 'system';
+  const a = (action || '').toLowerCase();
+  if (a.includes('login') || a.includes('logout')) category = 'auth';
+  else if (a.includes('sync')) category = 'cloud';
+  else if (a.includes('impersonate')) category = 'impersonation';
+  else if (a.includes('password') || a.includes('suspend') || a.includes('revoke') || a.includes('status')) category = 'security';
+  else if (a.includes('setting') || a.includes('backup') || a.includes('template') || a.includes('config')) category = 'settings';
+  else if (a.includes('grade') || a.includes('score') || a.includes('attendance')) category = 'academic';
+
+  activityLogs.unshift({
+    id: uuidv4(),
+    userId,
+    role,
+    action,
+    details,
+    category,
+    ip: client.ip,
+    device: client.device,
+    browser: client.browser,
+    os: client.os,
+    meta,
+    timestamp: new Date().toISOString()
+  });
+  if (activityLogs.length > 2000) activityLogs = activityLogs.slice(0, 2000);
   saveJSON(ACTIVITY_LOGS_FILE, activityLogs);
 }
 
@@ -991,8 +1069,8 @@ app.post('/api/auth/login', (req, res) => {
   // Admin
   if (id.toLowerCase() === 'admin') {
     if (pw === settingsConfig.adminPassword) {
-      logActivity('admin', 'admin', 'Login', 'Admin logged in');
-      const token = createSession('admin', 'admin');
+      logActivity('admin', 'admin', 'Login', 'Administrator logged in', {}, req);
+      const token = createSession('admin', 'admin', { name: 'Administrator' }, req);
       return res.json({ success: true, role: 'admin', token, user: { id: 'admin', name: 'Administrator' } });
     }
     return res.status(401).json({ error: 'Incorrect admin password.' });
@@ -1004,8 +1082,8 @@ app.post('/api/auth/login', (req, res) => {
     if (accountStatusConfig[teacherId] === 'suspended') return res.status(403).json({ error: 'Account suspended.' });
     const t = teachersConfig[teacherId];
     if (pw === t.password) {
-      logActivity(teacherId, 'teacher', 'Login', 'Teacher logged in');
-      const token = createSession(teacherId, 'teacher', { name: t.name });
+      logActivity(teacherId, 'teacher', 'Login', `Teacher ${t.name} logged in`, {}, req);
+      const token = createSession(teacherId, 'teacher', { name: t.name, email: t.email, department: t.department }, req);
       return res.json({ success: true, role: 'teacher', token, user: { id: teacherId, name: t.name, email: t.email, department: t.department } });
     }
     return res.status(401).json({ error: 'Incorrect password.' });
@@ -1030,14 +1108,18 @@ app.post('/api/auth/login', (req, res) => {
 
   const profile = studentProfilesConfig[canonicalId] || studentProfilesConfig[unpaddedId] || {};
   const isOnboarded = !!profile.onboarded;
-  const token = createSession(canonicalId, 'student', { name: student.name });
-  logActivity(canonicalId, 'student', 'Login', 'Student logged in');
+  const token = createSession(canonicalId, 'student', { name: student.name }, req);
+  logActivity(canonicalId, 'student', 'Login', `Student ${student.name} logged in`, {}, req);
 
   res.json({ success: true, role: 'student', token, isOnboarded, user: { id: canonicalId, name: student.name, ...profile } });
 });
 
 app.post('/api/auth/logout', (req, res) => {
   const token = req.headers['authorization']?.replace('Bearer ', '');
+  if (token && sessions[token]) {
+    const s = sessions[token];
+    logActivity(s.userId, s.role, 'Logout', `${s.meta?.name || s.userId} logged out`, {}, req);
+  }
   destroySession(token);
   res.json({ success: true });
 });
@@ -1058,8 +1140,211 @@ app.get('/api/auth/me', requireAuth(), (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  SETTINGS ROUTES
+//  SETTINGS ROUTES & SYNCHRONIZATION HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
+
+function extractSyncableSettings(cfg) {
+  if (!cfg) return null;
+  return {
+    portalName: cfg.portalName,
+    schoolName: cfg.schoolName,
+    schoolInfo: cfg.schoolInfo || {},
+    notification: cfg.notification || { enabled: false, message: '' },
+    features: cfg.features || { grades: true, attendance: true },
+    visibleTerms: cfg.visibleTerms || {},
+    termLocks: cfg.termLocks || {},
+    gradeRelease: cfg.gradeRelease || {},
+    sessionTimeout: cfg.sessionTimeout || 7200000,
+    portalLogo: cfg.portalLogo || '',
+    updatedAt: cfg.updatedAt || new Date(0).toISOString()
+  };
+}
+
+function applySyncableSettings(incoming) {
+  if (!incoming || typeof incoming !== 'object') return false;
+  if (incoming.portalName !== undefined) settingsConfig.portalName = incoming.portalName;
+  if (incoming.schoolName !== undefined) settingsConfig.schoolName = incoming.schoolName;
+  if (incoming.schoolInfo !== undefined) settingsConfig.schoolInfo = incoming.schoolInfo;
+  if (incoming.notification !== undefined) settingsConfig.notification = incoming.notification;
+  if (incoming.features !== undefined) settingsConfig.features = incoming.features;
+  if (incoming.visibleTerms !== undefined) settingsConfig.visibleTerms = incoming.visibleTerms;
+  if (incoming.termLocks !== undefined) settingsConfig.termLocks = incoming.termLocks;
+  if (incoming.gradeRelease !== undefined) settingsConfig.gradeRelease = incoming.gradeRelease;
+  if (incoming.sessionTimeout !== undefined) settingsConfig.sessionTimeout = incoming.sessionTimeout;
+  if (incoming.portalLogo !== undefined) settingsConfig.portalLogo = incoming.portalLogo;
+  if (incoming.updatedAt) settingsConfig.updatedAt = incoming.updatedAt;
+  saveJSON(SETTINGS_FILE, settingsConfig);
+  return true;
+}
+
+async function syncSettingsWithCloud(options = {}) {
+  const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
+  const secretKey = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  const { preferLocal = false, forcePush = false, forcePull = false, req = null } = options;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const resp = await fetch(`${cloudUrl}/api/sync/exchange-settings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-sync-token': secretKey
+      },
+      body: JSON.stringify({
+        localSettings: extractSyncableSettings(settingsConfig),
+        preferLocal,
+        forcePush,
+        forcePull
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      if (resp.status === 404) {
+        // Fallback for legacy AWS server before /api/sync/exchange-settings is deployed
+        try {
+          const files = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+          const probeFile = files.length > 0 ? files[0] : null;
+
+          const fallbackPullResp = await fetch(`${cloudUrl}/api/sync/provide-pull`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-sync-token': secretKey
+            },
+            body: JSON.stringify(probeFile ? { filename: probeFile } : {})
+          });
+
+          if (fallbackPullResp.ok) {
+            const pullData = await fallbackPullResp.json();
+            const remoteSettings = pullData.settings || {};
+            const remoteTime = new Date(remoteSettings.updatedAt || 0).getTime();
+            const localTime = new Date(settingsConfig.updatedAt || 0).getTime();
+
+            if (!forcePull && !forcePush && remoteSettings.updatedAt && remoteTime === localTime) {
+              return {
+                success: true,
+                action: 'already_in_sync',
+                message: 'Offline and Online settings are already in sync.',
+                cloudUpdatedAt: remoteSettings.updatedAt,
+                localUpdatedAt: settingsConfig.updatedAt
+              };
+            }
+
+            if (forcePull || (remoteTime > localTime && remoteSettings.updatedAt)) {
+              applySyncableSettings(remoteSettings);
+              return {
+                success: true,
+                action: 'pulled',
+                message: `Synchronized! Online settings were newer and updated locally.`,
+                cloudUpdatedAt: remoteSettings.updatedAt || null,
+                localUpdatedAt: settingsConfig.updatedAt,
+                appliedSettings: remoteSettings
+              };
+            } else {
+              // Local is newer: push to remote receive-push!
+              const files = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+              if (files.length > 0) {
+                const probeFile = files[0];
+                const contentBase64 = fs.readFileSync(path.join(GRADES_DIR, probeFile)).toString('base64');
+                const pushResp = await fetch(`${cloudUrl}/api/sync/receive-push`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-sync-token': secretKey
+                  },
+                  body: JSON.stringify({
+                    files: [{ filename: probeFile, contentBase64 }],
+                    settings: extractSyncableSettings(settingsConfig),
+                    sender: `${req?.session?.userId || 'Admin'} (Settings Sync)`
+                  })
+                });
+                if (pushResp.ok) {
+                  return {
+                    success: true,
+                    action: 'pushed',
+                    message: `Synchronized! Offline settings were newer and pushed to AWS Cloud.`,
+                    cloudUpdatedAt: settingsConfig.updatedAt,
+                    localUpdatedAt: settingsConfig.updatedAt
+                  };
+                }
+              }
+            }
+          }
+        } catch (fallbackErr) {
+          console.warn('Legacy sync bridge error:', fallbackErr.message);
+        }
+      }
+
+      const errText = await resp.text();
+      return { success: false, error: `Cloud returned HTTP ${resp.status}: ${errText}` };
+    }
+
+    const data = await resp.json();
+    if (!data.success) {
+      return { success: false, error: data.error || 'Failed to exchange settings.' };
+    }
+
+    const cloudTime = new Date(data.serverUpdatedAt || data.serverSettings?.updatedAt || 0).getTime();
+    const localTime = new Date(settingsConfig.updatedAt || 0).getTime();
+
+    if (data.action === 'incoming_should_update' && data.serverSettings) {
+      // Remote cloud is NEWER (or forcePull)! Apply remote settings locally!
+      applySyncableSettings(data.serverSettings);
+      logActivity(
+        req?.session?.userId || 'system',
+        req?.session?.role || 'system',
+        'Settings Synced from Cloud',
+        `Synchronized settings from AWS Cloud (Cloud was updated at ${new Date(cloudTime).toLocaleString()})`,
+        {},
+        req
+      );
+      return {
+        success: true,
+        action: 'pulled',
+        message: `Synchronized! Online settings were newer (${new Date(cloudTime).toLocaleString()}) and updated locally.`,
+        cloudUpdatedAt: data.serverUpdatedAt,
+        localUpdatedAt: settingsConfig.updatedAt,
+        appliedSettings: data.serverSettings
+      };
+    } else if (data.action === 'server_updated_from_incoming') {
+      // Local settings were NEWER (or forcePush)! Server updated to match local!
+      logActivity(
+        req?.session?.userId || 'system',
+        req?.session?.role || 'system',
+        'Settings Pushed to Cloud',
+        `Pushed newer offline settings to AWS Cloud (Updated at ${new Date(localTime).toLocaleString()})`,
+        {},
+        req
+      );
+      return {
+        success: true,
+        action: 'pushed',
+        message: `Synchronized! Offline settings were newer (${new Date(localTime).toLocaleString()}) and pushed to AWS Cloud.`,
+        cloudUpdatedAt: settingsConfig.updatedAt,
+        localUpdatedAt: settingsConfig.updatedAt
+      };
+    } else {
+      return {
+        success: true,
+        action: 'already_in_sync',
+        message: 'Offline and Online settings are already in sync.',
+        cloudUpdatedAt: data.serverUpdatedAt || settingsConfig.updatedAt,
+        localUpdatedAt: settingsConfig.updatedAt
+      };
+    }
+  } catch (err) {
+    return {
+      success: false,
+      offline: true,
+      error: 'Cannot reach AWS Cloud server: ' + err.message
+    };
+  }
+}
+
 app.get('/api/settings/public', (req, res) => {
   const { adminPassword, ...safe } = settingsConfig;
   res.json({ ...safe, developer: 'Sir Markyu' });
@@ -1069,8 +1354,8 @@ app.get('/api/settings', requireAuth(['admin']), (req, res) => {
   res.json(settingsConfig);
 });
 
-app.put('/api/settings', requireAuth(['admin']), (req, res) => {
-  const { adminPassword, portalName, schoolName, visibleTerms, termLocks, features, sessionTimeout, gradeRelease, schoolInfo, notification } = req.body;
+app.put('/api/settings', requireAuth(['admin']), async (req, res) => {
+  const { adminPassword, portalName, schoolName, visibleTerms, termLocks, features, sessionTimeout, gradeRelease, schoolInfo, notification, portalLogo } = req.body;
   if (portalName !== undefined) settingsConfig.portalName = portalName;
   if (schoolName !== undefined) settingsConfig.schoolName = schoolName;
   if (visibleTerms !== undefined) settingsConfig.visibleTerms = visibleTerms;
@@ -1080,13 +1365,28 @@ app.put('/api/settings', requireAuth(['admin']), (req, res) => {
   if (gradeRelease !== undefined) settingsConfig.gradeRelease = gradeRelease;
   if (schoolInfo !== undefined) settingsConfig.schoolInfo = schoolInfo;
   if (notification !== undefined) settingsConfig.notification = notification;
+  if (portalLogo !== undefined) settingsConfig.portalLogo = portalLogo;
   if (adminPassword && adminPassword.trim()) settingsConfig.adminPassword = adminPassword.trim();
-  console.log('--- DEBUG ---');
-  console.log('req.body.termLocks:', termLocks);
-  console.log('settingsConfig before save:', settingsConfig);
+  
+  // Set updated timestamp
+  settingsConfig.updatedAt = new Date().toISOString();
   saveJSON(SETTINGS_FILE, settingsConfig);
-  logActivity('admin', 'admin', 'Update Settings', 'Updated system settings');
-  res.json({ success: true });
+  logActivity('admin', 'admin', 'Update Settings', 'Updated system settings', {}, req);
+
+  // Attempt automatic cloud sync if serverUrl is configured
+  let cloudSyncResult = null;
+  if (settingsConfig.cloudSync?.serverUrl) {
+    try {
+      cloudSyncResult = await syncSettingsWithCloud({ preferLocal: true, req });
+    } catch (e) {}
+  }
+
+  res.json({ 
+    success: true, 
+    settings: settingsConfig, 
+    updatedAt: settingsConfig.updatedAt,
+    cloudSync: cloudSyncResult 
+  });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2007,8 +2307,72 @@ app.get('/api/sync/cloud-status', (req, res) => {
     totalStudents: Object.keys(studentsMap).length,
     filesLoaded: files.length,
     lastSync: settingsConfig.cloudSync?.lastSync || lastSync || null,
+    settingsUpdatedAt: settingsConfig.updatedAt || null,
     timestamp: new Date().toISOString()
   });
+});
+
+// 1b. Settings Exchange Endpoint (Bidirectional sync based on last update)
+app.post('/api/sync/exchange-settings', (req, res) => {
+  const secretKey = settingsConfig.cloudSync?.secretKey || DEFAULT_SYNC_SECRET;
+  const clientToken = req.headers['x-sync-token'];
+
+  if (!clientToken || clientToken !== secretKey) {
+    return res.status(403).json({ error: 'Forbidden: Invalid or missing sync authentication token.' });
+  }
+
+  const { localSettings, forcePush, forcePull } = req.body || {};
+  if (!localSettings || typeof localSettings !== 'object') {
+    return res.status(400).json({ error: 'Invalid settings payload.' });
+  }
+
+  const incomingTime = new Date(localSettings.updatedAt || 0).getTime();
+  const serverTime = new Date(settingsConfig.updatedAt || 0).getTime();
+
+  if (forcePull) {
+    return res.json({
+      success: true,
+      action: 'incoming_should_update',
+      serverSettings: extractSyncableSettings(settingsConfig),
+      serverUpdatedAt: settingsConfig.updatedAt
+    });
+  }
+
+  if (forcePush) {
+    applySyncableSettings(localSettings);
+    logActivity('sync', 'system', 'Settings Forced from Client', `Server settings forced from incoming payload`);
+    return res.json({
+      success: true,
+      action: 'server_updated_from_incoming',
+      serverUpdatedAt: settingsConfig.updatedAt
+    });
+  }
+
+  if (incomingTime > serverTime) {
+    applySyncableSettings(localSettings);
+    logActivity('sync', 'system', 'Settings Updated from Client', `Server settings updated because incoming update (${new Date(incomingTime).toLocaleString()}) was newer than server (${new Date(serverTime).toLocaleString()})`);
+    return res.json({
+      success: true,
+      action: 'server_updated_from_incoming',
+      serverUpdatedAt: settingsConfig.updatedAt,
+      message: 'Server updated from newer incoming settings.'
+    });
+  } else if (serverTime > incomingTime) {
+    return res.json({
+      success: true,
+      action: 'incoming_should_update',
+      serverSettings: extractSyncableSettings(settingsConfig),
+      serverUpdatedAt: settingsConfig.updatedAt,
+      message: 'Server settings are newer than incoming settings.'
+    });
+  } else {
+    return res.json({
+      success: true,
+      action: 'already_in_sync',
+      serverUpdatedAt: settingsConfig.updatedAt,
+      message: 'Settings already synchronized.'
+    });
+  }
 });
 
 // 2. Cloud Receiving Endpoint (Receives Excel files and updates on AWS)
@@ -2046,12 +2410,13 @@ app.post('/api/sync/receive-push', (req, res) => {
       saveJSON(CLASS_SETTINGS_FILE, classSettingsConfig);
     }
 
-    // Merge general settings (visibleTerms, termLocks, gradeRelease) if provided
+    // Merge general settings based on last update timestamp
     if (settings && typeof settings === 'object') {
-      if (settings.visibleTerms) settingsConfig.visibleTerms = settings.visibleTerms;
-      if (settings.termLocks) settingsConfig.termLocks = settings.termLocks;
-      if (settings.gradeRelease) settingsConfig.gradeRelease = settings.gradeRelease;
-      saveJSON(SETTINGS_FILE, settingsConfig);
+      const incomingTime = new Date(settings.updatedAt || 0).getTime();
+      const serverTime = new Date(settingsConfig.updatedAt || 0).getTime();
+      if (incomingTime >= serverTime) {
+        applySyncableSettings(settings);
+      }
     }
 
     // Immediately reload all class and student data on AWS
@@ -2120,11 +2485,7 @@ app.post('/api/sync/provide-pull', (req, res) => {
       success: true,
       files: packagedFiles,
       classSettings: classSettingsConfig,
-      settings: {
-        visibleTerms: settingsConfig.visibleTerms,
-        termLocks: settingsConfig.termLocks,
-        gradeRelease: settingsConfig.gradeRelease
-      },
+      settings: extractSyncableSettings(settingsConfig),
       timestamp: new Date().toISOString()
     });
   } catch (err) {
@@ -2137,6 +2498,8 @@ app.post('/api/sync/provide-pull', (req, res) => {
 app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) => {
   const cloudUrl = settingsConfig.cloudSync?.serverUrl || DEFAULT_CLOUD_URL;
   const localFiles = fs.existsSync(GRADES_DIR) ? fs.readdirSync(GRADES_DIR).filter(f => f.endsWith('.xlsx')) : [];
+  const localUpdatedAt = settingsConfig.updatedAt || null;
+  const localTime = new Date(localUpdatedAt || 0).getTime();
   
   try {
     const controller = new AbortController();
@@ -2150,13 +2513,33 @@ app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) 
 
     if (resp.ok) {
       const cloudData = await resp.json();
+      const cloudUpdatedAt = cloudData.settingsUpdatedAt || null;
+      const cloudTime = new Date(cloudUpdatedAt || 0).getTime();
+
+      let syncStatus = 'in_sync';
+      if (!cloudUpdatedAt || !localUpdatedAt) {
+        syncStatus = 'unknown';
+      } else if (localTime > cloudTime) {
+        syncStatus = 'local_newer';
+      } else if (cloudTime > localTime) {
+        syncStatus = 'cloud_newer';
+      } else {
+        syncStatus = 'in_sync';
+      }
+
       return res.json({
         online: true,
         cloudUrl,
         lastSync: settingsConfig.cloudSync?.lastSync || null,
         localFilesCount: localFiles.length,
         localFiles: localFiles,
-        cloudInfo: cloudData
+        cloudInfo: cloudData,
+        settingsSync: {
+          localUpdatedAt,
+          cloudUpdatedAt,
+          status: syncStatus,
+          diffSeconds: Math.round(Math.abs(localTime - cloudTime) / 1000)
+        }
       });
     } else {
       return res.json({
@@ -2165,7 +2548,12 @@ app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) 
         lastSync: settingsConfig.cloudSync?.lastSync || null,
         localFilesCount: localFiles.length,
         localFiles: localFiles,
-        error: `Cloud server returned status ${resp.status}`
+        error: `Cloud server returned status ${resp.status}`,
+        settingsSync: {
+          localUpdatedAt,
+          cloudUpdatedAt: null,
+          status: 'offline'
+        }
       });
     }
   } catch (err) {
@@ -2175,7 +2563,12 @@ app.get('/api/sync/status', requireAuth(['admin', 'teacher']), async (req, res) 
       lastSync: settingsConfig.cloudSync?.lastSync || null,
       localFilesCount: localFiles.length,
       localFiles: localFiles,
-      error: 'Cannot reach AWS cloud server. Offline or network error.'
+      error: 'Cannot reach AWS cloud server. Offline or network error.',
+      settingsSync: {
+        localUpdatedAt,
+        cloudUpdatedAt: null,
+        status: 'offline'
+      }
     });
   }
 });
@@ -2231,11 +2624,7 @@ app.post('/api/sync/push-to-cloud', requireAuth(['admin', 'teacher']), async (re
     const payload = {
       files: packagedFiles,
       classSettings: classSettingsConfig,
-      settings: {
-        visibleTerms: settingsConfig.visibleTerms,
-        termLocks: settingsConfig.termLocks,
-        gradeRelease: settingsConfig.gradeRelease
-      },
+      settings: extractSyncableSettings(settingsConfig),
       sender: `${req.session.userId} (${req.session.role})`
     };
 
@@ -2346,12 +2735,13 @@ app.post('/api/sync/pull-from-cloud', requireAuth(['admin', 'teacher']), async (
       saveJSON(CLASS_SETTINGS_FILE, classSettingsConfig);
     }
 
-    // Step 5: Merge general settings if provided
+    // Step 5: Merge general settings if provided and newer
     if (result.settings && typeof result.settings === 'object') {
-      if (result.settings.visibleTerms) settingsConfig.visibleTerms = result.settings.visibleTerms;
-      if (result.settings.termLocks) settingsConfig.termLocks = result.settings.termLocks;
-      if (result.settings.gradeRelease) settingsConfig.gradeRelease = result.settings.gradeRelease;
-      saveJSON(SETTINGS_FILE, settingsConfig);
+      const incomingTime = new Date(result.settings.updatedAt || 0).getTime();
+      const localTime = new Date(settingsConfig.updatedAt || 0).getTime();
+      if (incomingTime >= localTime) {
+        applySyncableSettings(result.settings);
+      }
     }
 
     // Step 6: Reload local data
@@ -2385,6 +2775,13 @@ app.post('/api/sync/pull-from-cloud', requireAuth(['admin', 'teacher']), async (
   }
 });
 
+// 4c. Trigger Settings Synchronization Only (Authorized by Admin)
+app.post('/api/sync/sync-settings', requireAuth(['admin']), async (req, res) => {
+  const { forcePush, forcePull } = req.body || {};
+  const result = await syncSettingsWithCloud({ forcePush, forcePull, req });
+  res.json(result);
+});
+
 // 5. Configure Cloud Server URL (Admin Only)
 app.post('/api/sync/configure', requireAuth(['admin']), (req, res) => {
   const { serverUrl, secretKey } = req.body;
@@ -2408,11 +2805,35 @@ app.get('/api/status', (req, res) => {
 
 // --- Admin Features: Backup, Logs, Sessions, Impersonate ---
 app.get('/api/admin/activity-logs', requireAuth(['admin']), (req, res) => {
-  res.json({ success: true, logs: activityLogs });
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCount = activityLogs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr)).length;
+  const categories = {};
+  activityLogs.forEach(l => {
+    const cat = l.category || 'system';
+    categories[cat] = (categories[cat] || 0) + 1;
+  });
+
+  res.json({
+    success: true,
+    logs: activityLogs,
+    stats: {
+      total: activityLogs.length,
+      today: todayCount,
+      byCategory: categories
+    }
+  });
+});
+
+app.delete('/api/admin/activity-logs', requireAuth(['admin']), (req, res) => {
+  const count = activityLogs.length;
+  activityLogs = [];
+  saveJSON(ACTIVITY_LOGS_FILE, activityLogs);
+  logActivity('admin', 'admin', 'Clear Activity Logs', `Cleared ${count} activity logs`, {}, req);
+  res.json({ success: true, message: `Successfully cleared ${count} log entries.` });
 });
 
 app.get('/api/admin/backup', requireAuth(['admin']), (req, res) => {
-  logActivity('admin', 'admin', 'Backup', 'Downloaded system backup');
+  logActivity('admin', 'admin', 'Backup', 'Downloaded system backup', {}, req);
   res.attachment(`GradePortal_Backup_${Date.now()}.zip`);
   const archive = archiver('zip', { zlib: { level: 9 } });
   archive.pipe(res);
@@ -2425,12 +2846,100 @@ app.get('/api/admin/backup', requireAuth(['admin']), (req, res) => {
 });
 
 app.get('/api/admin/sessions', requireAuth(['admin']), (req, res) => {
-  res.json({ success: true, sessions });
+  const currentToken = req.headers['authorization']?.replace('Bearer ', '');
+  const timeout = settingsConfig.sessionTimeout || 7200000;
+  const now = Date.now();
+
+  // Purge expired sessions
+  let expiredCleaned = 0;
+  for (const [t, s] of Object.entries(sessions)) {
+    const last = s.lastActive || s.createdAt || 0;
+    if (now - last > timeout) {
+      delete sessions[t];
+      expiredCleaned++;
+    }
+  }
+  if (expiredCleaned > 0) {
+    saveJSON(SESSIONS_FILE, sessions);
+  }
+
+  const enrichedSessions = {};
+  let adminCount = 0;
+  let teacherCount = 0;
+  let studentCount = 0;
+  let activeNowCount = 0;
+
+  for (const [t, s] of Object.entries(sessions)) {
+    const last = s.lastActive || s.createdAt || 0;
+    const isActiveNow = now - last < 15 * 60 * 1000;
+    if (isActiveNow) activeNowCount++;
+    if (s.role === 'admin') adminCount++;
+    else if (s.role === 'teacher') teacherCount++;
+    else if (s.role === 'student') studentCount++;
+
+    enrichedSessions[t] = {
+      ...s,
+      isCurrent: t === currentToken,
+      activeNow: isActiveNow
+    };
+  }
+
+  res.json({
+    success: true,
+    sessions: enrichedSessions,
+    stats: {
+      total: Object.keys(enrichedSessions).length,
+      activeNow: activeNowCount,
+      adminCount,
+      teacherCount,
+      studentCount,
+      sessionTimeout: timeout
+    }
+  });
 });
 
 app.delete('/api/admin/sessions/:token', requireAuth(['admin']), (req, res) => {
-  destroySession(req.params.token);
-  res.json({ success: true });
+  const targetToken = req.params.token;
+  const targetSession = sessions[targetToken];
+  const currentToken = req.headers['authorization']?.replace('Bearer ', '');
+
+  if (targetSession) {
+    const userDesc = targetSession.meta?.name || targetSession.userId || 'User';
+    logActivity('admin', 'admin', 'Revoke Session', `Revoked active session for ${userDesc} (${targetSession.role})`, {}, req);
+    destroySession(targetToken);
+  }
+  res.json({ success: true, selfRevoked: targetToken === currentToken });
+});
+
+app.post('/api/admin/sessions/revoke-all', requireAuth(['admin']), (req, res) => {
+  const currentToken = req.headers['authorization']?.replace('Bearer ', '');
+  const { exceptCurrent = true, role = null } = req.body || {};
+  let count = 0;
+
+  for (const token of Object.keys(sessions)) {
+    if (exceptCurrent && token === currentToken) continue;
+    if (role && sessions[token]?.role !== role) continue;
+    delete sessions[token];
+    count++;
+  }
+  saveJSON(SESSIONS_FILE, sessions);
+  logActivity('admin', 'admin', 'Revoke Multiple Sessions', `Revoked ${count} sessions${exceptCurrent ? ' (except current)' : ''}`, {}, req);
+  res.json({ success: true, revokedCount: count });
+});
+
+app.post('/api/admin/sessions/clean-expired', requireAuth(['admin']), (req, res) => {
+  const timeout = settingsConfig.sessionTimeout || 7200000;
+  const now = Date.now();
+  let count = 0;
+  for (const [t, s] of Object.entries(sessions)) {
+    const last = s.lastActive || s.createdAt || 0;
+    if (now - last > timeout) {
+      delete sessions[t];
+      count++;
+    }
+  }
+  if (count > 0) saveJSON(SESSIONS_FILE, sessions);
+  res.json({ success: true, cleanedCount: count });
 });
 
 app.post('/api/admin/impersonate/:role/:id', requireAuth(['admin']), (req, res) => {
@@ -2445,8 +2954,8 @@ app.post('/api/admin/impersonate/:role/:id', requireAuth(['admin']), (req, res) 
     if (targetUser) meta = { name: targetUser.name };
   }
   const targetId = targetUser?.studentNo || targetUser?.username || id;
-  logActivity('admin', 'admin', 'Impersonate', `Impersonated ${role} ${targetId}`);
-  const token = createSession(targetId, role, meta);
+  logActivity('admin', 'admin', 'Impersonate', `Impersonated ${role} ${targetId}`, {}, req);
+  const token = createSession(targetId, role, meta, req);
   res.json({ success: true, token, user: { id: targetId, name: meta.name || targetId } });
 });
 
@@ -2455,7 +2964,7 @@ app.post('/api/admin/impersonate/revert', (req, res) => {
   if (token) {
     destroySession(token);
   }
-  logActivity('admin', 'admin', 'Revert Impersonation', 'Exited impersonation mode and returned to Admin');
+  logActivity('admin', 'admin', 'Revert Impersonation', 'Exited impersonation mode and returned to Admin', {}, req);
   res.json({ success: true });
 });
 

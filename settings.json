@@ -32,12 +32,13 @@
     "grades": true,
     "attendance": true
   },
-  "sessionTimeout": 7200000,
+  "sessionTimeout": 3600000,
+  "updatedAt": "2026-10-14T13:21:53.987Z",
   "developer": "Sir Markyu",
   "portalLogo": "",
   "cloudSync": {
     "serverUrl": "http://16.59.47.134",
     "secretKey": "gradeportal-secure-cloud-sync-key-2026",
-    "lastSync": "2026-10-13T15:04:44.776Z"
+    "lastSync": "2026-10-14T04:35:49.214Z"
   }
 }

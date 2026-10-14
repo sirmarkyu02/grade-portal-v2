@@ -7,6 +7,7 @@ import { Shield, Clock, HardDrive, Key, UserCheck, AlertTriangle, Lock, Unlock, 
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
+import SystemLogsAndSessions from './SystemLogsAndSessions';
 
 // ─── Overview Page ─────────────────────────────────────────────────────────────
 function OverviewPage() {
@@ -669,12 +670,48 @@ function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
   const [classes, setClasses] = useState([]);
   const [expandedTerms, setExpandedTerms] = useState({});
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [syncingSettings, setSyncingSettings] = useState(false);
+
+  const fetchSyncStatus = async () => {
+    try {
+      const res = await api.get('/sync/status');
+      setSyncStatus(res.data);
+    } catch {
+      setSyncStatus({ online: false, settingsSync: { status: 'offline' } });
+    }
+  };
 
   useEffect(() => {
     api.get('/admin/activity-logs').then(r => setLogs(r.data.logs || []));
     api.get('/admin/sessions').then(r => setSessions(r.data.sessions || {}));
     api.get('/admin/classes').then(r => setClasses(r.data.classes || []));
+    fetchSyncStatus();
   }, []);
+
+  const handleSyncSettings = async (mode = 'auto') => {
+    setSyncingSettings(true);
+    try {
+      const payload = {};
+      if (mode === 'forcePush') payload.forcePush = true;
+      if (mode === 'forcePull') payload.forcePull = true;
+      const res = await api.post('/sync/sync-settings', payload);
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Settings synchronized!');
+        if (res.data.appliedSettings) {
+          setForm(prev => ({ ...prev, ...res.data.appliedSettings, adminPassword: '' }));
+          setSettings(res.data.appliedSettings);
+        }
+        await fetchSyncStatus();
+      } else {
+        toast.error(res.data?.error || 'Synchronization failed.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to synchronize settings with AWS Cloud.');
+    } finally {
+      setSyncingSettings(false);
+    }
+  };
 
   const revokeSession = async (token) => {
     try {
@@ -685,7 +722,10 @@ function SettingsPage() {
   };
 
   useEffect(() => {
-    api.get('/settings').then(r => { setSettings(r.data); setForm({ ...r.data, adminPassword: '' }); }).catch(() => toast.error('Failed to load settings.')).finally(() => setLoading(false));
+    api.get('/settings').then(r => { 
+      setSettings(r.data); 
+      setForm({ ...r.data, adminPassword: '' }); 
+    }).catch(() => toast.error('Failed to load settings.')).finally(() => setLoading(false));
   }, []);
 
   const handleSave = async () => {
@@ -693,16 +733,38 @@ function SettingsPage() {
     try {
       const payload = { ...form };
       if (!payload.adminPassword?.trim()) delete payload.adminPassword;
-      await api.put('/settings', payload);
-      toast.success('Settings saved!');
-    } catch { toast.error('Save failed.'); }
+      const res = await api.put('/settings', payload);
+      
+      const cloudSync = res.data?.cloudSync;
+      if (cloudSync && cloudSync.success) {
+        if (cloudSync.action === 'pushed') {
+          toast.success('Settings saved and synchronized to AWS Cloud!');
+        } else if (cloudSync.action === 'pulled') {
+          toast.success('Settings saved! Newer AWS Cloud settings were synchronized locally.');
+          if (cloudSync.appliedSettings) {
+            setForm(prev => ({ ...prev, ...cloudSync.appliedSettings, adminPassword: '' }));
+            setSettings(cloudSync.appliedSettings);
+          }
+        } else {
+          toast.success('Settings saved! Offline and Online settings are in sync.');
+        }
+      } else if (cloudSync && cloudSync.offline) {
+        toast.success('Settings saved locally. (AWS Cloud is currently offline)');
+      } else {
+        toast.success('Settings saved successfully!');
+      }
+
+      await fetchSyncStatus();
+    } catch (err) { 
+      toast.error(err.response?.data?.error || 'Save failed.'); 
+    }
     finally { setSaving(false); }
   };
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
 
   return (
-    <div className="page-content fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="page-content fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div className="tabs">
         <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>General & Identity</button>
         <button className={`tab-btn ${activeTab === 'terms' ? 'active' : ''}`} onClick={() => setActiveTab('terms')}>Terms & Access</button>
@@ -710,7 +772,86 @@ function SettingsPage() {
         <button className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`} onClick={() => setActiveTab('system')}>System Logs & Sessions</button>
       </div>
 
-      <div style={{ maxWidth: activeTab === 'system' ? 1000 : 800 }}>
+      {/* Settings Synchronization Banner */}
+      {activeTab !== 'system' && (
+        <div style={{
+          maxWidth: 800,
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: '12px 18px',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: syncStatus?.settingsSync?.status === 'in_sync' ? 'rgba(16, 185, 129, 0.12)' :
+                               syncStatus?.settingsSync?.status === 'cloud_newer' ? 'rgba(37, 99, 235, 0.12)' :
+                               syncStatus?.settingsSync?.status === 'local_newer' ? 'rgba(245, 158, 11, 0.12)' :
+                               'rgba(100, 116, 139, 0.12)',
+              color: syncStatus?.settingsSync?.status === 'in_sync' ? '#059669' :
+                     syncStatus?.settingsSync?.status === 'cloud_newer' ? '#2563eb' :
+                     syncStatus?.settingsSync?.status === 'local_newer' ? '#d97706' :
+                     '#64748b'
+            }}>
+              {syncStatus?.online ? <Cloud size={18} /> : <AlertTriangle size={18} />}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>
+                  {syncStatus?.settingsSync?.status === 'in_sync' && 'Settings In Sync with AWS Cloud'}
+                  {syncStatus?.settingsSync?.status === 'local_newer' && 'Offline Settings are Newer (Ready to Sync)'}
+                  {syncStatus?.settingsSync?.status === 'cloud_newer' && 'Online Cloud has Newer Settings Available'}
+                  {(!syncStatus?.online || syncStatus?.settingsSync?.status === 'offline') && 'AWS Cloud Offline (Local Authority)'}
+                  {syncStatus?.settingsSync?.status === 'unknown' && 'Settings Sync Ready'}
+                </span>
+                <span className={`badge ${
+                  syncStatus?.settingsSync?.status === 'in_sync' ? 'badge-success' :
+                  syncStatus?.settingsSync?.status === 'local_newer' ? 'badge-warning' :
+                  syncStatus?.settingsSync?.status === 'cloud_newer' ? 'badge-brand' :
+                  'badge-neutral'
+                }`} style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                  {syncStatus?.settingsSync?.status === 'in_sync' ? 'In Sync' :
+                   syncStatus?.settingsSync?.status === 'local_newer' ? 'Offline Newer' :
+                   syncStatus?.settingsSync?.status === 'cloud_newer' ? 'Cloud Newer' :
+                   'Offline'}
+                </span>
+              </div>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {syncStatus?.settingsSync?.localUpdatedAt ? `Local update: ${new Date(syncStatus.settingsSync.localUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Local: Saved'}
+                {syncStatus?.settingsSync?.cloudUpdatedAt ? ` • AWS Cloud update: ${new Date(syncStatus.settingsSync.cloudUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+                {syncStatus?.settingsSync?.status === 'in_sync' ? ' • Last-update synchronization active' : ''}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => handleSyncSettings('auto')} 
+              disabled={syncingSettings || !syncStatus?.online}
+              title="Synchronize offline and online settings based on last update"
+              style={{ fontSize: '0.78125rem', padding: '6px 12px' }}
+            >
+              <RefreshCw size={13} className={syncingSettings ? 'animate-spin' : ''} />
+              {syncingSettings ? 'Syncing...' : 'Sync Settings'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ maxWidth: activeTab === 'system' ? '100%' : 800, width: '100%' }}>
         {activeTab === 'general' && (
           <div className="card fade-in">
             <div className="card-header"><h3 style={{ fontSize: '1rem' }}>General Settings</h3></div>
@@ -1017,89 +1158,157 @@ function SettingsPage() {
         )}
 
         {activeTab === 'cloud' && (
-          <div className="card fade-in">
-            <div className="card-header"><h3 style={{ fontSize: '1rem' }}>AWS Cloud Integration Settings</h3></div>
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ padding: '12px 16px', background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                Configure the connection between this offline administrative application and your public AWS EC2 instance.
-                When you authorize a sync, all offline Excel grade files are transmitted to this address.
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Settings Synchronization Card */}
+            <div className="card fade-in">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Cloud size={18} color="var(--brand-600)" />
+                  <h3 style={{ fontSize: '1rem', margin: 0 }}>Bidirectional Settings Synchronization</h3>
+                </div>
+                <span className={`badge ${
+                  syncStatus?.settingsSync?.status === 'in_sync' ? 'badge-success' :
+                  syncStatus?.settingsSync?.status === 'local_newer' ? 'badge-warning' :
+                  syncStatus?.settingsSync?.status === 'cloud_newer' ? 'badge-brand' :
+                  'badge-neutral'
+                }`}>
+                  {syncStatus?.settingsSync?.status === 'in_sync' ? 'Synchronized' :
+                   syncStatus?.settingsSync?.status === 'local_newer' ? 'Offline Newer' :
+                   syncStatus?.settingsSync?.status === 'cloud_newer' ? 'Cloud Newer' :
+                   'Cloud Offline'}
+                </span>
               </div>
-
-              <div className="form-group">
-                <label className="form-label">Live AWS Cloud Server URL</label>
-                <input 
-                  className="form-input" 
-                  type="text" 
-                  value={form.cloudSync?.serverUrl || 'http://16.59.47.134'} 
-                  onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), serverUrl: e.target.value } }))} 
-                  placeholder="e.g. http://16.59.47.134" 
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  The public IP or domain of your AWS EC2 instance running Grade Portal v2.
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+                  Settings automatically synchronize between your offline desktop computer and your online AWS EC2 cloud portal based on the <strong>last update timestamp</strong>. The system compares modification times, ensuring the most recently saved settings win while preserving environment-specific secrets.
                 </p>
-              </div>
 
-              <div className="form-group">
-                <label className="form-label">Cloud Sync Authorization Secret Key</label>
-                <input 
-                  className="form-input" 
-                  type="password" 
-                  value={form.cloudSync?.secretKey || 'gradeportal-secure-cloud-sync-key-2026'} 
-                  onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), secretKey: e.target.value } }))} 
-                  placeholder="Secret synchronization token" 
-                />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  Shared secret token used to authenticate synchronization requests between this offline machine and AWS.
-                </p>
-              </div>
+                {/* Timestamps & Status Details Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div style={{ padding: '12px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <HardDrive size={14} color="var(--brand-500)" />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Offline Machine</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      {syncStatus?.settingsSync?.localUpdatedAt ? new Date(syncStatus.settingsSync.localUpdatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'Never'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {syncStatus?.settingsSync?.localUpdatedAt ? new Date(syncStatus.settingsSync.localUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Not saved yet'}
+                    </div>
+                  </div>
 
-              <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 8 }} onClick={handleSave} disabled={saving}>
-                {saving ? <><LoadingSpinner /> Saving...</> : 'Save Cloud Settings'}
-              </button>
+                  <div style={{ padding: '12px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Globe size={14} color="var(--brand-500)" />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>AWS Cloud Portal</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      {syncStatus?.online && syncStatus?.settingsSync?.cloudUpdatedAt ? new Date(syncStatus.settingsSync.cloudUpdatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : (syncStatus?.online ? 'Connected' : 'Offline')}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {syncStatus?.online && syncStatus?.settingsSync?.cloudUpdatedAt ? new Date(syncStatus.settingsSync.cloudUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : (syncStatus?.online ? 'No remote timestamp' : 'Server unreachable')}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Clock size={14} color="var(--brand-500)" />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Last Sync Event</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                      {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'None'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never synced'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Toolbar */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, paddingTop: 6 }}>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => handleSyncSettings('auto')} 
+                    disabled={syncingSettings || !syncStatus?.online}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <RefreshCw size={14} className={syncingSettings ? 'animate-spin' : ''} />
+                    {syncingSettings ? 'Synchronizing...' : 'Sync Settings (Last Update Wins)'}
+                  </button>
+
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleSyncSettings('forcePush')} 
+                    disabled={syncingSettings || !syncStatus?.online}
+                    title="Force push offline settings to online cloud regardless of timestamps"
+                    style={{ fontSize: '0.8125rem' }}
+                  >
+                    <CloudUpload size={14} />
+                    Force Push to Cloud
+                  </button>
+
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => handleSyncSettings('forcePull')} 
+                    disabled={syncingSettings || !syncStatus?.online}
+                    title="Force pull cloud settings to offline local machine regardless of timestamps"
+                    style={{ fontSize: '0.8125rem' }}
+                  >
+                    <CloudDownload size={14} />
+                    Force Pull from Cloud
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* AWS Connection Settings Card */}
+            <div className="card fade-in">
+              <div className="card-header"><h3 style={{ fontSize: '1rem' }}>AWS Cloud Integration Settings</h3></div>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ padding: '12px 16px', background: 'var(--grad-soft)', borderRadius: 10, border: '1px solid var(--violet-200)', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Configure the connection between this offline administrative application and your public AWS EC2 instance.
+                  When you authorize a sync, all offline Excel grade files are transmitted to this address.
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Live AWS Cloud Server URL</label>
+                  <input 
+                    className="form-input" 
+                    type="text" 
+                    value={form.cloudSync?.serverUrl || 'http://16.59.47.134'} 
+                    onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), serverUrl: e.target.value } }))} 
+                    placeholder="e.g. http://16.59.47.134" 
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    The public IP or domain of your AWS EC2 instance running Grade Portal v2.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Cloud Sync Authorization Secret Key</label>
+                  <input 
+                    className="form-input" 
+                    type="password" 
+                    value={form.cloudSync?.secretKey || 'gradeportal-secure-cloud-sync-key-2026'} 
+                    onChange={e => setForm(f => ({ ...f, cloudSync: { ...(f.cloudSync || {}), secretKey: e.target.value } }))} 
+                    placeholder="Secret synchronization token" 
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Shared secret token used to authenticate synchronization requests between this offline machine and AWS.
+                  </p>
+                </div>
+
+                <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: 8 }} onClick={handleSave} disabled={saving}>
+                  {saving ? <><LoadingSpinner /> Saving...</> : 'Save Cloud Settings'}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {activeTab === 'system' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div className="card fade-in">
-              <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Active Sessions</h3></div>
-              <div className="table-wrapper">
-                <table className="data-table">
-                  <thead><tr><th>User</th><th>Role</th><th>Active Since</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {Object.entries(sessions).map(([tok, s]) => (
-                      <tr key={tok}>
-                        <td>{s.meta?.name || s.userId}</td>
-                        <td>{s.role}</td>
-                        <td style={{fontSize:'0.8rem'}}>{new Date(s.createdAt).toLocaleString()}</td>
-                        <td><button className="btn btn-danger btn-sm" onClick={() => revokeSession(tok)}>Revoke</button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="card fade-in">
-              <div className="card-header"><h3 style={{ fontSize: '1rem' }}>Activity Logs</h3></div>
-              <div className="table-wrapper" style={{maxHeight: 400, overflow: 'auto'}}>
-                <table className="data-table">
-                  <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
-                  <tbody>
-                    {logs.slice(0, 50).map(l => (
-                      <tr key={l.id}>
-                        <td style={{fontSize:'0.8rem'}}>{new Date(l.timestamp).toLocaleString()}</td>
-                        <td>{l.userId} ({l.role})</td>
-                        <td>{l.action}</td>
-                        <td style={{fontSize:'0.8rem', color: 'var(--text-muted)'}}>{l.details}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+          <SystemLogsAndSessions />
         )}
       </div>
     </div>
