@@ -84,16 +84,16 @@ function getAcademicStanding(gwa) {
 // ─── Grading Scale Reference Modal (Tertiary / College Only) ─────────────────
 function GradingScaleModal({ open, onClose }) {
   const scale = [
-    { grade: '1.00', pct: '97 – 100%', remark: 'Excellent', cls: 'grade-a' },
-    { grade: '1.25', pct: '94 – 96%', remark: 'Very Superior', cls: 'grade-a' },
-    { grade: '1.50', pct: '91 – 93%', remark: 'Superior', cls: 'grade-a' },
-    { grade: '1.75', pct: '88 – 90%', remark: 'Very Good', cls: 'grade-a' },
-    { grade: '2.00', pct: '85 – 87%', remark: 'Good', cls: 'grade-b' },
-    { grade: '2.25', pct: '82 – 84%', remark: 'Satisfactory', cls: 'grade-b' },
-    { grade: '2.50', pct: '79 – 81%', remark: 'Fair', cls: 'grade-b' },
-    { grade: '2.75', pct: '76 – 78%', remark: 'Passing', cls: 'grade-c' },
-    { grade: '3.00', pct: '75%', remark: 'Passing (Threshold)', cls: 'grade-c' },
-    { grade: '5.00', pct: 'Below 75%', remark: 'Failed / Did Not Meet Requirements', cls: 'grade-f' },
+    { grade: '1.00', pct: '97.50 – 100.00%', remark: 'Excellent', cls: 'grade-a' },
+    { grade: '1.25', pct: '94.50 – 97.49%', remark: 'Very Good', cls: 'grade-a' },
+    { grade: '1.50', pct: '91.50 – 94.49%', remark: 'Very Good', cls: 'grade-a' },
+    { grade: '1.75', pct: '86.50 – 91.49%', remark: 'Very Good', cls: 'grade-a' },
+    { grade: '2.00', pct: '81.50 – 86.49%', remark: 'Good / Satisfactory', cls: 'grade-b' },
+    { grade: '2.25', pct: '76.00 – 81.49%', remark: 'Satisfactory', cls: 'grade-b' },
+    { grade: '2.50', pct: '70.50 – 75.99%', remark: 'Satisfactory / Fair', cls: 'grade-b' },
+    { grade: '2.75', pct: '65.00 – 70.49%', remark: 'Fair', cls: 'grade-c' },
+    { grade: '3.00', pct: '59.50 – 64.99%', remark: 'Passed (Passing Mark)', cls: 'grade-c' },
+    { grade: '5.00', pct: 'Below 59.50%', remark: 'Failed / Did Not Meet Requirements', cls: 'grade-f' },
     { grade: 'INC', pct: '—', remark: 'Incomplete Requirements', cls: 'grade-d' },
     { grade: 'DRP', pct: '—', remark: 'Officially / Unofficially Dropped', cls: 'grade-f' },
   ];
@@ -103,7 +103,7 @@ function GradingScaleModal({ open, onClose }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ padding: '14px 18px', background: 'var(--grad-soft)', borderRadius: 12, border: '1px solid var(--violet-200)' }}>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-            In tertiary education, grades follow the <strong>1.00 to 5.00 numerical rating system</strong>, where <strong>1.00</strong> represents highest excellence and <strong>3.00</strong> is the passing mark.
+            In tertiary education, grades follow the <strong>1.00 to 5.00 numerical rating system</strong>, where <strong>1.00</strong> represents highest excellence and <strong>3.00</strong> is the passing mark (based on the institutional <strong>P60</strong> passing standard: 59.50% / 60.00%).
           </p>
         </div>
 
