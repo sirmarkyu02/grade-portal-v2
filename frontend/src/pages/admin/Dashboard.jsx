@@ -475,7 +475,7 @@ function TeachersPage() {
         <div className="card">
           <div className="table-wrapper" style={{ borderRadius: 0 }}>
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Username</th><th>Status</th><th>Department</th><th>Classes</th><th>Added</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Name</th><th>Username</th><th>Status</th><th>Department</th><th>Classes</th><th>Added</th><th className="col-actions">Actions</th></tr></thead>
               <tbody>
                 {filtered.map((t, i) => (
                   <tr key={i}>
@@ -489,12 +489,12 @@ function TeachersPage() {
                       </button>
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—'}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)}><Edit3 size={13} /></button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(t)} style={{ color: 'var(--color-error)' }}><Trash2 size={13} /></button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => handleImpersonate(t)} title="Impersonate"><UserCheck size={13}/></button>
-                        <button className="btn btn-ghost btn-sm" onClick={() => toggleStatus(t)} title={t.status === 'suspended' ? 'Activate' : 'Suspend'}><Shield size={13}/></button>
+                    <td className="col-actions">
+                      <div className="table-actions">
+                        <button className="btn btn-ghost btn-action" onClick={() => openEdit(t)} title="Edit Teacher" aria-label="Edit Teacher"><Edit3 size={15} /></button>
+                        <button className="btn btn-ghost btn-action" onClick={() => setConfirmDelete(t)} style={{ color: 'var(--color-error)' }} title="Delete Teacher" aria-label="Delete Teacher"><Trash2 size={15} /></button>
+                        <button className="btn btn-ghost btn-action" onClick={() => handleImpersonate(t)} title="Impersonate Teacher" aria-label="Impersonate Teacher"><UserCheck size={15}/></button>
+                        <button className="btn btn-ghost btn-action" onClick={() => toggleStatus(t)} title={t.status === 'suspended' ? 'Activate' : 'Suspend'} aria-label={t.status === 'suspended' ? 'Activate' : 'Suspend'}><Shield size={15}/></button>
                       </div>
                     </td>
                   </tr>
@@ -1401,9 +1401,9 @@ function StudentsOverview() {
           </div>
         </div>
         {loading ? <div style={{ padding: 24, display: 'flex', justifyContent: 'center' }}><LoadingSpinner /></div> : (
-          <div style={{ maxHeight: 400, overflow: 'auto' }}>
+          <div className="table-wrapper" style={{ maxHeight: 420, overflow: 'auto' }}>
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects</th><th>Action</th></tr></thead>
+              <thead><tr><th>Name</th><th>Student No.</th><th>Status</th><th>Subjects</th><th className="col-actions">Action</th></tr></thead>
               <tbody>
                 {filtered.slice(0, 50).map((s, i) => (
                   <tr key={i}>
@@ -1411,20 +1411,20 @@ function StudentsOverview() {
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>{s.studentNo}</td>
                     <td><span className={`badge ${s.status === 'suspended' ? 'badge-error' : 'badge-success'}`}>{s.status || 'active'}</span></td>
                     <td><span className="badge badge-neutral">{s.subjectCount}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleSelectStudent(s.studentNo)} title="View">
-                        <Eye size={13} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => handleImpersonate(s)} title="Impersonate">
-                        <UserCheck size={13} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setConfirmReset(s)} title="Reset Password">
-                        <Key size={13} />
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => toggleStatus(s)} title={s.status === 'suspended' ? 'Activate' : 'Suspend'}>
-                        <Shield size={13} />
-                      </button>
+                    <td className="col-actions">
+                      <div className="table-actions">
+                        <button className="btn btn-ghost btn-action" onClick={() => handleSelectStudent(s.studentNo)} title="View Student Details" aria-label="View Student Details">
+                          <Eye size={15} />
+                        </button>
+                        <button className="btn btn-ghost btn-action" onClick={() => handleImpersonate(s)} title="Impersonate Student" aria-label="Impersonate Student">
+                          <UserCheck size={15} />
+                        </button>
+                        <button className="btn btn-ghost btn-action" onClick={() => setConfirmReset(s)} title="Reset Password" aria-label="Reset Password">
+                          <Key size={15} />
+                        </button>
+                        <button className="btn btn-ghost btn-action" onClick={() => toggleStatus(s)} title={s.status === 'suspended' ? 'Activate Student' : 'Suspend Student'} aria-label={s.status === 'suspended' ? 'Activate Student' : 'Suspend Student'}>
+                          <Shield size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>

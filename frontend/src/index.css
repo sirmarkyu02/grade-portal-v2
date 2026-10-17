@@ -137,6 +137,7 @@ h3 { font-size: 1.25rem; }
   font-weight: 600; font-size: 0.875rem; line-height: 1; border: none;
   transition: all var(--duration-base) var(--ease); white-space: nowrap;
 }
+.btn svg { flex-shrink: 0; min-width: 13px; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-primary {
@@ -221,6 +222,22 @@ h3 { font-size: 1.25rem; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tbody tr { transition: background var(--duration-fast); }
 .data-table tbody tr:hover, .data-table tbody tr:hover td { background: var(--bg-hover) !important; }
+.data-table th.col-actions, .data-table td.col-actions { text-align: right; white-space: nowrap; }
+.table-actions {
+  display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap;
+}
+.btn-action {
+  width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important;
+  padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  flex-shrink: 0 !important; border-radius: var(--radius-md) !important; border: 1px solid transparent;
+  transition: all var(--duration-fast) var(--ease);
+}
+.btn-action svg {
+  width: 15px !important; height: 15px !important; flex-shrink: 0 !important; min-width: 15px !important;
+}
+.btn-action:hover:not(:disabled) {
+  background: var(--bg-hover) !important; border-color: var(--border) !important; transform: translateY(-1px);
+}
 
 /*  Stat Cards  */
 .stat-card {
@@ -832,6 +849,50 @@ h3 { font-size: 1.25rem; }
     padding: 8px 10px !important;
     font-size: 0.8125rem !important;
   }
+  /* Mobile Sticky Action Column */
+  .data-table th.col-actions,
+  .data-table td.col-actions {
+    position: sticky;
+    right: 0;
+    z-index: 5;
+    background: var(--bg-card);
+    box-shadow: -6px 0 12px -3px rgba(15, 10, 26, 0.1);
+  }
+  .data-table th.col-actions {
+    z-index: 6;
+    background: var(--grad-soft);
+  }
+  .data-table tbody tr:hover td.col-actions {
+    background: var(--bg-hover) !important;
+  }
+  .table-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+  }
+  .btn-action {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--bg-hover) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    flex-shrink: 0 !important;
+  }
+  .btn-action svg {
+    width: 15px !important;
+    height: 15px !important;
+    flex-shrink: 0 !important;
+    min-width: 15px !important;
+  }
+
   .score-input {
     width: 58px !important;
     padding: 6px 4px !important;
