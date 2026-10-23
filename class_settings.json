@@ -67,5 +67,58 @@
       "PRELIMS": true
     },
     "blockedStudents": []
+  },
+  "BSHM 1A - MMW.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {},
+    "blockedStudents": []
+  },
+  "BSHM 1A - Euthenics.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {},
+    "blockedStudents": []
+  },
+  "BSHM 1B - Euthenics.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {},
+    "blockedStudents": [],
+    "releaseFinals": {}
+  },
+  "BSTM 1A - MMW.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {
+      "MIDTERM": false,
+      "PRELIMS": true
+    },
+    "blockedStudents": [],
+    "releaseFinals": {
+      "MIDTERM": true
+    }
+  },
+  "BSTM 1A - Euthenics.xlsx": {
+    "hideTerm1": false,
+    "hideTerm2": false,
+    "hideTerm3": true,
+    "hideTerm4": true,
+    "hideAttendance": false,
+    "hideBreakdown": {},
+    "blockedStudents": [],
+    "releaseFinals": {}
   }
 }

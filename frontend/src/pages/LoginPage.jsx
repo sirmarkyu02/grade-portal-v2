@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, GraduationCap, BookOpen, Users, Award, Lock, User } from 'lucide-react';
 import { useAuth } from '../App';
+import { UiInlineSwitcher } from '../components/UiSwitcher';
 import api from '../api';
 import toast from 'react-hot-toast';
 
@@ -102,6 +103,11 @@ export default function LoginPage() {
 
       {/* Right Panel */}
       <div className="login-right">
+        {/* Discreet UI Version Switcher tucked quietly in top corner */}
+        <div className="login-theme-toggle-wrap">
+          <UiInlineSwitcher size="xs" className="login-theme-switcher" compact />
+        </div>
+
         <div className="login-form">
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
             <div style={{ width: 52, height: 52, background: 'var(--grad-soft)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>

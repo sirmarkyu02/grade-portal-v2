@@ -10,6 +10,7 @@ import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinn
 import { useAuth } from '../../App';
 import api from '../../api';
 import toast from 'react-hot-toast';
+import { UiInlineSwitcher } from '../../components/UiSwitcher';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SHARED & COLLEGE HELPERS
@@ -745,6 +746,14 @@ function SHSSettingsPage({ user, onRefresh }) {
                 />
               ))}
             </div>
+
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 4 }}>UI / UX Design Version</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: 12 }}>
+                Switch between the modern Nova Studio interface and Classic Portal v2.
+              </p>
+              <UiInlineSwitcher size="md" />
+            </div>
           </div>
         </div>
       )}
@@ -785,9 +794,9 @@ function SHSSettingsPage({ user, onRefresh }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function CollegeAttendanceView({ attendance }) {
+  const [showDetailedLog, setShowDetailedLog] = useState(false);
   if (!attendance) return <div className="empty-state"><p className="empty-desc">No attendance data available.</p></div>;
   const { summary, records } = attendance;
-  const [showDetailedLog, setShowDetailedLog] = useState(false);
 
   const termKeys = ['term1', 'term2', 'term3', 'term4'];
   const termLabels = ['Prelims', 'Midterm', 'Pre-Finals', 'Finals'];
@@ -1767,6 +1776,14 @@ function CollegeSettingsPage({ user, onRefresh }) {
                   title={t.label}
                 />
               ))}
+            </div>
+
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: 4 }}>UI / UX Design Version</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: 12 }}>
+                Switch between the modern Nova Studio interface and Classic Portal v2.
+              </p>
+              <UiInlineSwitcher size="md" />
             </div>
           </div>
         </div>

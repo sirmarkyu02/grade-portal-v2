@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GraduationCap, LogOut, Menu, X, RotateCcw, UserCheck } from 'lucide-react';
 import { useAuth } from '../App';
+import { UiInlineSwitcher, UiHeaderButton } from './UiSwitcher';
 import toast from 'react-hot-toast';
 
 export function AppLayout({ children, navItems, role }) {
@@ -77,7 +78,12 @@ export function AppLayout({ children, navItems, role }) {
           })}
         </nav>
 
-        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="sidebar-ui-switcher" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>UI Version</span>
+            <UiInlineSwitcher size="sm" />
+          </div>
+
           {isImpersonating ? (
             <button
               onClick={exitImpersonation}
@@ -94,7 +100,7 @@ export function AppLayout({ children, navItems, role }) {
               <span>Sign Out</span>
             </button>
           )}
-          <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--border)', textAlign: 'center', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
             Developed by <span style={{ fontWeight: 700, color: 'var(--brand-600)' }}>Sir Markyu</span>
           </div>
         </div>
@@ -113,11 +119,14 @@ export function AppLayout({ children, navItems, role }) {
             </div>
             <span className="mobile-header-title">{portalName}</span>
           </div>
-          <button onClick={() => setSidebarOpen(true)} className="mobile-avatar-btn" aria-label="Open profile drawer">
-            <div className="avatar avatar-sm">
-              {user?.photo ? <img src={user.photo} alt={user.name} /> : initials(user?.name)}
-            </div>
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <UiHeaderButton />
+            <button onClick={() => setSidebarOpen(true)} className="mobile-avatar-btn" aria-label="Open profile drawer">
+              <div className="avatar avatar-sm">
+                {user?.photo ? <img src={user.photo} alt={user.name} /> : initials(user?.name)}
+              </div>
+            </button>
+          </div>
         </div>
         {children}
 
@@ -161,7 +170,10 @@ export function PageHeader({ title, subtitle, actions }) {
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}
       </div>
-      {actions && <div className="page-header-right">{actions}</div>}
+      <div className="page-header-right">
+        <UiHeaderButton />
+        {actions}
+      </div>
     </div>
   );
 }

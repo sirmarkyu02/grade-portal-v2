@@ -66,6 +66,7 @@ const CLASS_SETTINGS_FILE = path.join(ROOT, 'class_settings.json');
 const SESSIONS_FILE = path.join(ROOT, 'sessions.json');
 const ACCOUNT_STATUS_FILE = path.join(ROOT, 'account_status.json');
 const ACTIVITY_LOGS_FILE = path.join(ROOT, 'activity_logs.json');
+const DELETION_REQUESTS_FILE = path.join(ROOT, 'deletion_requests.json');
 
 // Ensure directories exist
 [GRADES_DIR, GRADES_HISTORY_DIR, TEMPLATES_DIR, TEMPLATES_HISTORY_DIR, PHOTOS_DIR].forEach(d => {
@@ -88,6 +89,7 @@ let classSettingsConfig = {};
 let sessions = {};
 let accountStatusConfig = {};
 let activityLogs = [];
+let deletionRequests = [];
 let lastSync = null;
 
 // ─── File Loaders ────────────────────────────────────────────────────────────
@@ -130,12 +132,13 @@ function reloadAll() {
   sessions = loadJSON(SESSIONS_FILE);
   accountStatusConfig = loadJSON(ACCOUNT_STATUS_FILE);
   activityLogs = loadJSON(ACTIVITY_LOGS_FILE, []);
+  deletionRequests = loadJSON(DELETION_REQUESTS_FILE, []);
 }
 
 reloadAll();
 
 // Watch config files
-[SETTINGS_FILE, TEACHERS_FILE, PASSWORDS_FILE, STUDENT_PROFILES_FILE, CLASS_SETTINGS_FILE, ACCOUNT_STATUS_FILE].forEach(f => {
+[SETTINGS_FILE, TEACHERS_FILE, PASSWORDS_FILE, STUDENT_PROFILES_FILE, CLASS_SETTINGS_FILE, ACCOUNT_STATUS_FILE, DELETION_REQUESTS_FILE].forEach(f => {
   chokidar.watch(f, { persistent: true, ignoreInitial: true, awaitWriteFinish: { stabilityThreshold: 500 } })
     .on('change', () => reloadAll());
 });
@@ -1611,9 +1614,99 @@ app.get('/api/teacher/classes', requireAuth(['teacher']), (req, res) => {
       if (sub) { info = { ...sub.info }; break; }
     }
     const studentCount = Object.values(studentsMap).filter(d => d.subjects.some(s => s.info.fileName === f)).length;
-    return { ...info, studentCount, lastModified: s.mtime };
+    const pendingReq = deletionRequests.find(r => r.fileName === f && r.status === 'pending');
+    return { ...info, studentCount, lastModified: s.mtime, deletionRequest: pendingReq || null };
   });
   res.json({ success: true, classes });
+});
+
+app.post('/api/teacher/classes/:filename/request-delete', requireAuth(['teacher']), (req, res) => {
+  const teacherId = req.session.userId;
+  const { filename } = req.params;
+  const { reason } = req.body;
+
+  if (filename.includes('..') || filename.includes('/')) return res.status(400).json({ error: 'Invalid filename.' });
+  if (!teachersConfig[teacherId]?.files?.includes(filename)) {
+    return res.status(403).json({ error: 'Access denied: This class does not belong to your account.' });
+  }
+
+  const filePath = path.join(GRADES_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Class file not found on disk.' });
+  }
+
+  const existingPending = deletionRequests.find(r => r.fileName === filename && r.status === 'pending');
+  if (existingPending) {
+    return res.status(400).json({ error: 'A deletion request for this class is already pending administrator approval.' });
+  }
+
+  let info = { subject: filename.replace('.xlsx', ''), section: '', gradeLevel: '' };
+  for (const [sNo, data] of Object.entries(studentsMap)) {
+    const sub = data.subjects.find(s => s.info.fileName === filename);
+    if (sub) { info = { ...sub.info }; break; }
+  }
+  const studentCount = Object.values(studentsMap).filter(d => d.subjects.some(s => s.info.fileName === filename)).length;
+
+  const newRequest = {
+    id: `del_${Date.now()}_${uuidv4().slice(0, 8)}`,
+    fileName: filename,
+    subject: info.subject || filename.replace('.xlsx', ''),
+    section: info.section || '',
+    gradeLevel: info.gradeLevel || '',
+    teacherId,
+    teacherName: teachersConfig[teacherId]?.name || teacherId,
+    studentCount,
+    reason: (reason && reason.trim()) ? reason.trim() : 'Requested by teacher',
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    reviewedAt: null,
+    reviewedBy: null,
+    adminNote: null
+  };
+
+  deletionRequests.unshift(newRequest);
+  saveJSON(DELETION_REQUESTS_FILE, deletionRequests);
+
+  logActivity(
+    teacherId,
+    'teacher',
+    'Class Deletion Requested',
+    `Teacher ${newRequest.teacherName} requested deletion of "${newRequest.subject}" (${filename}) for Admin approval. Reason: ${newRequest.reason}`,
+    { requestId: newRequest.id, fileName: filename },
+    req
+  );
+
+  res.json({
+    success: true,
+    message: 'Deletion request submitted successfully. It will be removed once approved by the administrator.',
+    request: newRequest
+  });
+});
+
+app.post('/api/teacher/classes/:filename/cancel-delete-request', requireAuth(['teacher']), (req, res) => {
+  const teacherId = req.session.userId;
+  const { filename } = req.params;
+
+  const reqIndex = deletionRequests.findIndex(r => r.fileName === filename && r.teacherId === teacherId && r.status === 'pending');
+  if (reqIndex === -1) {
+    return res.status(404).json({ error: 'No active pending deletion request found for this class.' });
+  }
+
+  const cancelledReq = deletionRequests[reqIndex];
+  cancelledReq.status = 'cancelled';
+  cancelledReq.reviewedAt = new Date().toISOString();
+  saveJSON(DELETION_REQUESTS_FILE, deletionRequests);
+
+  logActivity(
+    teacherId,
+    'teacher',
+    'Class Deletion Cancelled',
+    `Cancelled deletion request for "${cancelledReq.subject}" (${filename})`,
+    { requestId: cancelledReq.id, fileName: filename },
+    req
+  );
+
+  res.json({ success: true, message: 'Class deletion request cancelled.' });
 });
 
 app.post('/api/teacher/upload', requireAuth(['teacher']), uploadGrade.single('gradesFile'), (req, res) => {
@@ -2096,6 +2189,127 @@ app.get('/api/admin/classes', requireAuth(['admin']), (req, res) => {
   res.json({ success: true, classes: Object.values(classMap) });
 });
 
+// --- Class Deletion Requests Management ---
+app.get('/api/admin/deletion-requests', requireAuth(['admin']), (req, res) => {
+  const pendingCount = deletionRequests.filter(r => r.status === 'pending').length;
+  res.json({ success: true, requests: deletionRequests, pendingCount });
+});
+
+app.post('/api/admin/deletion-requests/:id/approve', requireAuth(['admin']), (req, res) => {
+  const { id } = req.params;
+  const { adminNote } = req.body;
+
+  const reqObj = deletionRequests.find(r => r.id === id);
+  if (!reqObj) {
+    return res.status(404).json({ error: 'Deletion request not found.' });
+  }
+  if (reqObj.status !== 'pending') {
+    return res.status(400).json({ error: `Request cannot be approved because it is already ${reqObj.status}.` });
+  }
+
+  const filename = reqObj.fileName;
+  const currentPath = path.join(GRADES_DIR, filename);
+
+  // Safety Backup: copy the file to GRADES_HISTORY_DIR before unlinking
+  if (fs.existsSync(currentPath)) {
+    try {
+      const backupPath = path.join(GRADES_HISTORY_DIR, `DELETED_${Date.now()}_${filename}`);
+      fs.copyFileSync(currentPath, backupPath);
+      fs.unlinkSync(currentPath);
+    } catch (err) {
+      console.error('Failed to safely remove class file:', err);
+      return res.status(500).json({ error: 'Failed to delete class file from disk: ' + err.message });
+    }
+  }
+
+  // Remove filename from all teachers
+  let teachersModified = false;
+  Object.keys(teachersConfig).forEach(tId => {
+    if (teachersConfig[tId]?.files && teachersConfig[tId].files.includes(filename)) {
+      teachersConfig[tId].files = teachersConfig[tId].files.filter(f => f !== filename);
+      teachersModified = true;
+    }
+  });
+  if (teachersModified) saveJSON(TEACHERS_FILE, teachersConfig);
+
+  // Remove settings for this class
+  if (classSettingsConfig[filename]) {
+    delete classSettingsConfig[filename];
+    saveJSON(CLASS_SETTINGS_FILE, classSettingsConfig);
+  }
+
+  // Remove locks for this class
+  if (settingsConfig.termLocks) {
+    let locksModified = false;
+    for (const t of Object.keys(settingsConfig.termLocks)) {
+      if (typeof settingsConfig.termLocks[t] === 'object' && settingsConfig.termLocks[t][filename] !== undefined) {
+        delete settingsConfig.termLocks[t][filename];
+        locksModified = true;
+      }
+    }
+    if (locksModified) saveJSON(SETTINGS_FILE, settingsConfig);
+  }
+
+  // Mark request as approved
+  reqObj.status = 'approved';
+  reqObj.reviewedAt = new Date().toISOString();
+  reqObj.reviewedBy = req.session.userId;
+  reqObj.adminNote = (adminNote && adminNote.trim()) ? adminNote.trim() : 'Approved by administrator';
+  saveJSON(DELETION_REQUESTS_FILE, deletionRequests);
+
+  // Re-read grades and update student maps
+  loadAllData();
+
+  logActivity(
+    'admin',
+    'admin',
+    'Class Deletion Approved',
+    `Administrator approved deletion of class "${reqObj.subject}" (${filename}) requested by ${reqObj.teacherName}.`,
+    { requestId: reqObj.id, fileName: filename, adminNote: reqObj.adminNote },
+    req
+  );
+
+  res.json({
+    success: true,
+    message: `Class "${reqObj.subject}" has been successfully deleted.`,
+    request: reqObj
+  });
+});
+
+app.post('/api/admin/deletion-requests/:id/reject', requireAuth(['admin']), (req, res) => {
+  const { id } = req.params;
+  const { adminNote } = req.body;
+
+  const reqObj = deletionRequests.find(r => r.id === id);
+  if (!reqObj) {
+    return res.status(404).json({ error: 'Deletion request not found.' });
+  }
+  if (reqObj.status !== 'pending') {
+    return res.status(400).json({ error: `Request cannot be rejected because it is already ${reqObj.status}.` });
+  }
+
+  reqObj.status = 'rejected';
+  reqObj.reviewedAt = new Date().toISOString();
+  reqObj.reviewedBy = req.session.userId;
+  reqObj.adminNote = (adminNote && adminNote.trim()) ? adminNote.trim() : 'Rejected by administrator';
+  saveJSON(DELETION_REQUESTS_FILE, deletionRequests);
+
+  logActivity(
+    'admin',
+    'admin',
+    'Class Deletion Rejected',
+    `Administrator rejected deletion of class "${reqObj.subject}" (${reqObj.fileName}) requested by ${reqObj.teacherName}. Reason: ${reqObj.adminNote}`,
+    { requestId: reqObj.id, fileName: reqObj.fileName, adminNote: reqObj.adminNote },
+    req
+  );
+
+  res.json({
+    success: true,
+    message: 'Deletion request rejected.',
+    request: reqObj
+  });
+});
+
 // --- Template Management ---
 app.get('/api/admin/templates', requireAuth(['admin']), (req, res) => {
   const files = fs.readdirSync(TEMPLATES_DIR).filter(f => f.endsWith('.xlsx'));
@@ -2281,7 +2495,8 @@ app.get('/api/admin/statistics', requireAuth(['admin']), (req, res) => {
     return { subject: entry.subject, section: entry.section, gradeLevel: entry.gradeLevel, instructor: entry.instructor, totalStudents: entry.students.length, gradedStudents: graded.length, average: avg, passed, failed: graded.length - passed, passRate: graded.length > 0 ? Math.round((passed / graded.length) * 100) : null };
   });
 
-  res.json({ success: true, overview: { totalStudents: students.length, totalSubjects: subjectStats.length }, subjectStats });
+  const pendingDeletions = deletionRequests.filter(r => r.status === 'pending').length;
+  res.json({ success: true, overview: { totalStudents: students.length, totalSubjects: subjectStats.length, pendingDeletions }, subjectStats });
 });
 
 // --- Admin Local Sync ---

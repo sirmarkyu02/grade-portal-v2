@@ -1,11 +1,279 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award, Printer, FileSpreadsheet, ChevronDown, Sliders, Cloud, CloudUpload, CloudDownload, CheckCircle2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Upload, Download, Edit3, Save, X, Search, RotateCcw, Eye, EyeOff, Users, Settings, Activity, Award, Printer, FileSpreadsheet, ChevronDown, Sliders, Cloud, CloudUpload, CloudDownload, CheckCircle2, AlertTriangle, RefreshCw, ExternalLink, Trash2, Clock, ShieldAlert, Send, Server, Laptop, Wifi, ArrowRight, ShieldCheck } from 'lucide-react';
 import { AppLayout, PageHeader, GradePill, StatusBadge, EmptyState, LoadingSpinner, Modal, DropdownMenu, DropdownItem, DropdownDivider, DropdownHeader } from '../../components/Layout';
 import { useAuth } from '../../App';
 import api from '../../api';
 import toast from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
+
+// ─── Teacher Delete Class Modal ──────────────────────────────────────────────
+function TeacherDeleteClassModal({ classInfo, onClose, onSuccess }) {
+  const [reason, setReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const presetReasons = [
+    'Duplicate section sheet',
+    'Incorrect curriculum/strand uploaded',
+    'Class re-assigned to another teacher',
+    'Subject merged with another section',
+    'Testing / Demo sheet'
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      toast.error('Please specify a reason for this deletion request.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await api.post(`/teacher/classes/${encodeURIComponent(classInfo.fileName)}/request-delete`, {
+        reason: reason.trim()
+      });
+      toast.success(res.data?.message || 'Deletion request submitted for Admin approval!');
+      if (onSuccess) onSuccess(res.data?.request);
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to submit deletion request.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Request Class Deletion" size="md">
+      <form onSubmit={handleSubmit} style={{ padding: '4px 0' }}>
+        {/* Warning & Info Notice */}
+        <div style={{
+          padding: 16,
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: 12,
+          marginBottom: 20,
+          display: 'flex',
+          gap: 14,
+          alignItems: 'flex-start'
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#ef4444',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Trash2 size={20} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#991b1b', marginBottom: 4 }}>
+              Admin Approval Required
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: '#7f1d1d', lineHeight: 1.5 }}>
+              All subject and class deletions require Administrator verification before files and student grades are removed from the system.
+            </div>
+          </div>
+        </div>
+
+        {/* Target Class Card */}
+        <div style={{
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          fontSize: '0.85rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Subject / Course:</span>
+            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Section & Level:</span>
+            <span style={{ fontWeight: 600 }}>{classInfo.section || '—'} {classInfo.gradeLevel ? `(${classInfo.gradeLevel})` : ''}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Enrolled Students:</span>
+            <span style={{ fontWeight: 600 }}>{classInfo.studentCount || 0} Students</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Spreadsheet File:</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{classInfo.fileName}</span>
+          </div>
+        </div>
+
+        {/* Quick Reason Chips */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+            Quick select reason:
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {presetReasons.map((r, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`quick-reason-chip ${reason === r ? 'selected' : ''}`}
+                onClick={() => setReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reason Textarea */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            Reason for Deletion Request <span style={{ color: '#ef4444' }}>*</span>
+          </label>
+          <textarea
+            className="input"
+            rows={3}
+            placeholder="Explain why this subject or class needs to be deleted..."
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            style={{ width: '100%', resize: 'vertical' }}
+            required
+          />
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            This explanation will be provided to the Administrator for approval.
+          </p>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={submitting}>
+            Keep Class
+          </button>
+          <button
+            type="submit"
+            className="btn btn-danger"
+            disabled={submitting || !reason.trim()}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+          >
+            {submitting ? <LoadingSpinner size="sm" /> : <Trash2 size={15} />}
+            <span>{submitting ? 'Submitting Request...' : 'Submit Deletion Request'}</span>
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ─── Teacher View Active Deletion Request Modal ──────────────────────────────
+function TeacherViewDeleteRequestModal({ classInfo, onClose, onCancelled }) {
+  const [cancelling, setCancelling] = useState(false);
+  const request = classInfo.deletionRequest;
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      await api.post(`/teacher/classes/${encodeURIComponent(classInfo.fileName)}/cancel-delete-request`);
+      toast.success('Deletion request cancelled successfully.');
+      if (onCancelled) onCancelled();
+      onClose();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to cancel request.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title="Deletion Request Pending" size="md">
+      <div style={{ padding: '4px 0' }}>
+        <div style={{
+          padding: 16,
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1px solid #fde68a',
+          borderRadius: 12,
+          marginBottom: 20,
+          display: 'flex',
+          gap: 14,
+          alignItems: 'flex-start'
+        }}>
+          <div style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            background: '#fde68a',
+            color: '#b45309',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Clock size={20} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#92400e', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>Awaiting Administrator Review</span>
+              <span className="deletion-pulse-dot" />
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: '#b45309', lineHeight: 1.5 }}>
+              You submitted a deletion request for this class on {request?.createdAt ? new Date(request.createdAt).toLocaleString() : 'recently'}. The administrator has been notified.
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          fontSize: '0.85rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Subject:</span>
+            <span style={{ fontWeight: 700 }}>{classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Section:</span>
+            <span style={{ fontWeight: 600 }}>{classInfo.section || '—'}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Status:</span>
+            <span className="badge badge-warning" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <Clock size={11} /> Pending Admin Approval
+            </span>
+          </div>
+          <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 10, marginTop: 4 }}>
+            <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Your Stated Reason:</span>
+            <div style={{ background: 'white', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', fontStyle: 'italic', color: 'var(--text-main)' }}>
+              "{request?.reason || 'No reason specified'}"
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleCancel}
+            disabled={cancelling}
+            style={{ color: '#b45309', borderColor: '#fde68a' }}
+          >
+            {cancelling ? <LoadingSpinner size="sm" /> : <RotateCcw size={14} />}
+            <span>Cancel / Withdraw Request</span>
+          </button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 // ─── File Drop Upload ─────────────────────────────────────────────────────────
 function DropUploader({ onUpload, loading }) {
@@ -36,6 +304,8 @@ function ClassListPage({ onSelectClass }) {
   const [syncAllMode, setSyncAllMode] = useState('push'); // 'push' | 'pull'
   const [syncAllAuthorized, setSyncAllAuthorized] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
+  const [deletingClass, setDeletingClass] = useState(null);
+  const [viewingRequestClass, setViewingRequestClass] = useState(null);
 
   const loadClasses = async () => {
     try {
@@ -47,11 +317,14 @@ function ClassListPage({ onSelectClass }) {
 
   const checkCloudStatus = async () => {
     setCloudChecking(true);
+    const t0 = performance.now();
     try {
       const res = await api.get('/sync/status');
-      setCloudStatus(res.data);
+      const latency = Math.round(performance.now() - t0);
+      setCloudStatus({ ...res.data, latency });
     } catch {
-      setCloudStatus({ online: false, error: 'Could not reach server' });
+      const latency = Math.round(performance.now() - t0);
+      setCloudStatus({ online: false, latency, error: 'Could not reach server' });
     } finally {
       setCloudChecking(false);
     }
@@ -100,6 +373,13 @@ function ClassListPage({ onSelectClass }) {
 
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 64 }}><LoadingSpinner size="lg" /></div>;
 
+  const teacherStudentsCount = classes.reduce((acc, c) => acc + (c.studentCount || c.totalStudents || 0), 0);
+  const cloudFilesCount = cloudStatus?.cloudInfo?.filesLoaded;
+  const cloudStudentsCount = cloudStatus?.cloudInfo?.totalStudents;
+  const hasCloudDiff = cloudStatus?.online && cloudFilesCount !== undefined && cloudFilesCount !== classes.length;
+  const filesDiff = (cloudFilesCount || 0) - classes.length;
+  const studentDiff = (cloudStudentsCount || 0) - teacherStudentsCount;
+
   return (
     <div className="page-content fade-in">
       {/* Teacher Welcome Banner */}
@@ -133,96 +413,188 @@ function ClassListPage({ onSelectClass }) {
       {/* AWS Cloud Synchronization Quick Banner */}
       <div style={{
         borderRadius: 16,
-        padding: '16px 20px',
+        padding: '20px 24px',
         marginBottom: 28,
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-sm)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: 16,
-        boxShadow: 'var(--shadow-sm)'
+        flexDirection: 'column',
+        gap: 16
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{
-            width: 42,
-            height: 42,
-            borderRadius: 12,
-            background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: cloudStatus?.online ? '#10b981' : 'var(--text-muted)'
-          }}>
-            <Cloud size={22} />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>AWS Cloud Synchronization</span>
-              <span style={{
-                fontSize: '0.725rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: 999,
-                background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.12)',
-                color: cloudStatus?.online ? '#059669' : '#dc2626',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5
-              }}>
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: cloudStatus?.online ? '#10b981' : '#ef4444'
-                }} />
-                {cloudChecking ? 'Checking...' : cloudStatus?.online ? 'AWS Online' : 'AWS Offline'}
-              </span>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 14
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: cloudStatus?.online ? '#10b981' : 'var(--text-muted)'
+            }}>
+              <Cloud size={24} />
             </div>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-              {cloudStatus?.lastSync ? `Last synced: ${new Date(cloudStatus.lastSync).toLocaleString()}` : 'Never synchronized'}
-              {' • '}
-              <a href={cloudStatus?.cloudUrl || 'http://16.59.47.134'} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-600)', textDecoration: 'none', fontWeight: 500 }}>
-                {cloudStatus?.cloudUrl || 'http://16.59.47.134'} ↗
-              </a>
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>AWS Cloud Synchronization</span>
+                <span style={{
+                  fontSize: '0.725rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  background: cloudStatus?.online ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                  color: cloudStatus?.online ? '#059669' : '#dc2626',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}>
+                  <span style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: cloudStatus?.online ? '#10b981' : '#ef4444'
+                  }} />
+                  {cloudChecking ? 'Pinging...' : cloudStatus?.online ? (cloudStatus.latency !== undefined ? `AWS Online (${cloudStatus.latency}ms)` : 'AWS Online') : 'AWS Offline'}
+                </span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  background: 'var(--bg-main)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)'
+                }}>
+                  Desktop Authority Node
+                </span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                {cloudStatus?.lastSync ? `Last synchronized: ${new Date(cloudStatus.lastSync).toLocaleString()}` : 'Never synchronized'}
+                {' • '}
+                <a href={cloudStatus?.cloudUrl || 'http://16.59.47.134'} target="_blank" rel="noreferrer" style={{ color: 'var(--brand-600)', textDecoration: 'none', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  {cloudStatus?.cloudUrl || 'http://16.59.47.134'} <ExternalLink size={11} />
+                </a>
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={checkCloudStatus}
+              disabled={cloudChecking}
+              title="Ping AWS EC2 server and measure latency"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <RefreshCw size={13} className={cloudChecking ? 'spin' : ''} />
+              <span>{cloudChecking ? 'Checking...' : 'Check AWS'}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => { setSyncAllMode('pull'); setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              title="Download latest online edits into this offline app"
+            >
+              <CloudDownload size={14} style={{ color: 'var(--brand-600)' }} />
+              <span>Pull from AWS</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => { setSyncAllMode('push'); setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              title="Push offline grade sheets and settings to AWS Cloud"
+            >
+              <CloudUpload size={14} />
+              <span>Push to AWS</span>
+            </button>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={checkCloudStatus}
-            disabled={cloudChecking}
-            title="Check AWS connection status"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            <RefreshCw size={13} className={cloudChecking ? 'spin' : ''} />
-            <span>Check</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => { setSyncAllMode('pull'); setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            title="Download latest online edits into this offline app"
-          >
-            <CloudDownload size={14} style={{ color: 'var(--brand-600)' }} />
-            <span>Pull from AWS</span>
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => { setSyncAllMode('push'); setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            title="Push offline grade sheets and settings to AWS Cloud"
-          >
-            <CloudUpload size={14} />
-            <span>Push to AWS</span>
-          </button>
+        {/* Visual Bidirectional Pipeline Track */}
+        <div className="cloud-pipeline-diagram" style={{ margin: 0 }}>
+          <div className="cloud-pipeline-node">
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--grad-main)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Laptop size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-main)' }}>Offline Workstation</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {classes.length} Local Grade Sheet{classes.length !== 1 ? 's' : ''} • {teacherStudentsCount} Students
+              </div>
+            </div>
+          </div>
+
+          <div className="cloud-pipeline-track">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="cloud-pipeline-tag">Bidirectional Sync</span>
+              {hasCloudDiff && (
+                <span className="badge" style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700 }}>
+                  Cloud: {cloudFilesCount} Files ({cloudStudentsCount || 0} Students)
+                </span>
+              )}
+            </div>
+            <div className="cloud-pipeline-line" />
+            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              {cloudStatus?.online ? 'Encrypted REST Tunnel Ready' : 'Standby / Offline'}
+            </span>
+          </div>
+
+          <div className="cloud-pipeline-node">
+            <div style={{ width: 34, height: 34, borderRadius: 8, background: cloudStatus?.online ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : 'rgba(100, 116, 139, 0.2)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Server size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-main)' }}>AWS EC2 Cloud Hub</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {cloudFilesCount !== undefined ? `${cloudFilesCount} Files Online • ${cloudStudentsCount || 0} Students` : '16.59.47.134'}
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Cloud Reconciliation Notice */}
+        {hasCloudDiff && (
+          <div style={{
+            marginTop: 4,
+            padding: '10px 14px',
+            background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8) 0%, rgba(240, 253, 250, 0.8) 100%)',
+            border: '1px solid #bfdbfe',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10,
+            fontSize: '0.785rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#1e3a8a' }}>
+              <Users size={15} color="#2563eb" />
+              <span>
+                <strong>Cloud Roster Notice:</strong> AWS Cloud currently hosts <strong>{cloudFilesCount} classes ({cloudStudentsCount || 0} total students)</strong> compared to your <strong>{classes.length} local class sheets ({teacherStudentsCount} students)</strong>.
+              </span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.72rem', padding: '3px 8px', height: 'auto', background: 'white', borderColor: '#bfdbfe', color: '#1d4ed8' }}
+              onClick={() => { setSyncAllMode('pull'); setSyncAllAuthorized(false); setSyncAllModalOpen(true); }}
+            >
+              <CloudDownload size={11} style={{ marginRight: 4 }} />
+              Pull from AWS
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid-2 teacher-dashboard-grid" style={{ alignItems: 'start' }}>
@@ -232,28 +604,102 @@ function ClassListPage({ onSelectClass }) {
             <EmptyState icon={BookOpen} title="No classes yet" description="Upload a grade sheet to get started." />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {classes.map((cls, i) => (
-                <div key={i} className="card" style={{ padding: 20, cursor: 'pointer', transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)' }} onClick={() => onSelectClass(cls)}
-                  onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-lg)'}
-                  onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                    <div style={{ display: 'flex', gap: 16, minWidth: 0, flex: 1 }}>
-                      <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--brand-50)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--brand-600)' }}>
-                        <BookOpen size={24} />
+              {classes.map((cls, i) => {
+                const isPending = cls.deletionRequest?.status === 'pending';
+                return (
+                  <div key={i} className={`card ${isPending ? 'pending' : ''}`} style={{
+                    padding: 20,
+                    cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    borderColor: isPending ? '#fde68a' : undefined,
+                    background: isPending ? 'linear-gradient(180deg, #ffffff 0%, #fffdf7 100%)' : undefined
+                  }} onClick={() => onSelectClass(cls)}
+                    onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-lg)'}
+                    onMouseLeave={e => e.currentTarget.style.boxShadow = ''}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 16, minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 14,
+                          background: isPending ? '#fef3c7' : 'var(--brand-50)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          color: isPending ? '#d97706' : 'var(--brand-600)'
+                        }}>
+                          <BookOpen size={24} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <p style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', margin: 0, wordWrap: 'break-word', lineHeight: 1.3 }}>
+                              {cls.subject || cls.fileName?.replace('.xlsx', '')}
+                            </p>
+                            {isPending && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: 999,
+                                background: '#fffbeb',
+                                color: '#b45309',
+                                border: '1px solid #fde68a'
+                              }}>
+                                <span className="deletion-pulse-dot" style={{ width: 6, height: 6 }} />
+                                Pending Deletion Approval
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500, margin: '3px 0 2px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {cls.section} • {cls.gradeLevel}
+                          </p>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            Last updated: {cls.lastModified ? new Date(cls.lastModified).toLocaleDateString() : '—'}
+                          </p>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-                        <p style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: 2, wordWrap: 'break-word', lineHeight: 1.3 }}>{cls.subject || cls.fileName?.replace('.xlsx', '')}</p>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cls.section} • {cls.gradeLevel}</p>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Last updated: {cls.lastModified ? new Date(cls.lastModified).toLocaleDateString() : '—'}</p>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                        <span className="badge" style={{ background: 'var(--brand-100)', color: 'var(--brand-700)', padding: '6px 12px' }}>{cls.studentCount} students</span>
+                        {isPending ? (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', borderColor: '#fde68a', color: '#b45309', background: '#fffbeb', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                            title="View deletion request details / Cancel"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingRequestClass(cls);
+                            }}
+                          >
+                            <Clock size={12} />
+                            <span>Pending</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-icon btn-sm"
+                            style={{ color: 'var(--text-muted)', transition: 'all 0.15s ease' }}
+                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                            title="Delete Subject / Class (Requires Admin Approval)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingClass(cls);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                        <span style={{ color: 'var(--brand-400)', marginLeft: 2 }}>›</span>
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
-                      <span className="badge" style={{ background: 'var(--brand-100)', color: 'var(--brand-700)', padding: '6px 12px' }}>{cls.studentCount} students</span>
-                      <span style={{ color: 'var(--brand-400)', marginLeft: 4 }}>›</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -276,124 +722,9 @@ function ClassListPage({ onSelectClass }) {
           open={syncAllModalOpen} 
           onClose={() => { if (!syncingAll) setSyncAllModalOpen(false); }} 
           title={syncAllMode === 'pull' ? 'Authorize Pull from AWS Cloud (Online ➔ Offline)' : 'Authorize Push to AWS Cloud (Offline ➔ Online)'}
-        >
-          <div style={{ padding: '4px 0' }}>
-            <div style={{
-              padding: 16,
-              background: 'var(--brand-50)',
-              border: '1px solid var(--brand-200)',
-              borderRadius: 12,
-              marginBottom: 20,
-              display: 'flex',
-              gap: 12,
-              alignItems: 'flex-start'
-            }}>
-              {syncAllMode === 'pull' ? (
-                <CloudDownload size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
-              ) : (
-                <Cloud size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
-              )}
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--brand-900)', marginBottom: 4 }}>
-                  {syncAllMode === 'pull' ? 'Pull All Classes from AWS Cloud' : 'Synchronize All Classes to AWS Cloud'}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--brand-700)', lineHeight: 1.5 }}>
-                  {syncAllMode === 'pull' ? (
-                    <>
-                      Download all Excel grade files and settings from the live AWS server (<strong>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</strong>) into your offline computer. This is useful when changes were made online while away.
-                    </>
-                  ) : (
-                    <>
-                      This offline desktop app is your local authority. When authorized, all your Excel grade files and visibility settings will be securely pushed to the online AWS server (<strong>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</strong>).
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: 'var(--bg-input)',
-              padding: '14px 16px',
-              borderRadius: 10,
-              marginBottom: 20,
-              fontSize: '0.85rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              border: '1px solid var(--border)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Target Server:</span>
-                <span style={{ fontWeight: 600 }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Connection Status:</span>
-                {cloudChecking ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
-                    <LoadingSpinner size="sm" /> Checking...
-                  </span>
-                ) : cloudStatus?.online ? (
-                  <span style={{ color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    ● Online & Ready
-                  </span>
-                ) : (
-                  <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    ● Offline / Unreachable
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{syncAllMode === 'pull' ? 'Cloud Files Available:' : 'Offline Classes to Push:'}</span>
-                <span style={{ fontWeight: 600 }}>
-                  {syncAllMode === 'pull' && cloudStatus?.cloudInfo?.filesLoaded !== undefined
-                    ? `${cloudStatus.cloudInfo.filesLoaded} Files on AWS`
-                    : `${classes.length} Class Grade Sheet(s)`}
-                </span>
-              </div>
-            </div>
-
-            {syncAllMode === 'pull' && (
-              <div style={{ padding: '12px 16px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10, color: '#92400e', fontSize: '0.8125rem', marginBottom: 16 }}>
-                <AlertTriangle size={18} color="#d97706" style={{ marginTop: 2, flexShrink: 0 }} />
-                <div>
-                  <strong style={{ display: 'block', marginBottom: 2 }}>Caution: Pulling Replaces Offline Files</strong>
-                  <span>"Pull from AWS" downloads online sheets from AWS and <strong>overwrites your offline class files</strong>. If you entered or edited grades offline on this computer, use <strong>"Push to AWS"</strong> instead! (Your local files are safely backed up automatically).</span>
-                </div>
-              </div>
-            )}
-
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 12,
-              padding: 14,
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              cursor: 'pointer',
-              marginBottom: 24
-            }}>
-              <input
-                type="checkbox"
-                checked={syncAllAuthorized}
-                onChange={e => setSyncAllAuthorized(e.target.checked)}
-                style={{ width: 18, height: 18, marginTop: 2, cursor: 'pointer', accentColor: 'var(--brand-600)' }}
-              />
-              <div style={{ fontSize: '0.85rem', lineHeight: 1.4 }}>
-                <strong style={{ display: 'block', color: 'var(--text-main)', marginBottom: 2 }}>
-                  {syncAllMode === 'pull'
-                    ? 'I authorize pulling latest online Excel data to update my offline files'
-                    : 'I authorize pushing offline grades to the online AWS server'}
-                </strong>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {syncAllMode === 'pull'
-                    ? 'I understand this will overwrite my local offline grade sheets with the versions currently on AWS.'
-                    : 'I understand this will update the live online records so students can see their latest published grades.'}
-                </span>
-              </div>
-            </label>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+          size="md"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, width: '100%' }}>
               <button className="btn btn-ghost" onClick={() => setSyncAllModalOpen(false)} disabled={syncingAll}>
                 Cancel
               </button>
@@ -412,8 +743,175 @@ function ClassListPage({ onSelectClass }) {
                 )}
               </button>
             </div>
+          }
+        >
+          <div style={{ padding: '4px 0' }}>
+            {/* Directional Flow Box */}
+            <div className={`cloud-transfer-box ${syncAllMode}`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: syncAllMode === 'push' ? 'var(--grad-main)' : 'rgba(245, 158, 11, 0.2)',
+                  color: syncAllMode === 'push' ? 'white' : '#d97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {syncAllMode === 'push' ? <Laptop size={20} /> : <Server size={20} />}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Source Origin</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {syncAllMode === 'push' 
+                      ? `Offline Workstation (${classes.length} classes • ${teacherStudentsCount} students)` 
+                      : `Live AWS EC2 Cloud (${cloudFilesCount || 0} classes • ${cloudStudentsCount || 0} students)`}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                <ArrowRight size={18} color={syncAllMode === 'push' ? 'var(--brand-600)' : '#d97706'} />
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  {syncAllMode === 'push' ? 'Upload' : 'Download'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: syncAllMode === 'push' ? 'rgba(16, 185, 129, 0.2)' : 'var(--grad-main)',
+                  color: syncAllMode === 'push' ? '#059669' : 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {syncAllMode === 'push' ? <Server size={20} /> : <Laptop size={20} />}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Destination Hub</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {syncAllMode === 'push' 
+                      ? `Live AWS EC2 Cloud (${cloudStudentsCount || 0} students online)` 
+                      : `Offline Workstation (${teacherStudentsCount} students local)`}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              background: 'var(--bg-input)',
+              padding: '14px 16px',
+              borderRadius: 12,
+              marginBottom: 18,
+              fontSize: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 9,
+              border: '1px solid var(--border)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>AWS Server Endpoint:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Connection & Latency:</span>
+                {cloudChecking ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                    <LoadingSpinner size="sm" /> Measuring ping...
+                  </span>
+                ) : cloudStatus?.online ? (
+                  <span style={{ color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                    Online {cloudStatus.latency !== undefined ? `(${cloudStatus.latency}ms)` : ''}
+                  </span>
+                ) : (
+                  <span style={{ color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+                    Offline / Standby
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>{syncAllMode === 'pull' ? 'Cloud Spreadsheets:' : 'Local Sheets to Transmit:'}</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                  {syncAllMode === 'pull' && cloudStatus?.cloudInfo?.filesLoaded !== undefined
+                    ? `${cloudStatus.cloudInfo.filesLoaded} Files Available on AWS`
+                    : `${classes.length} Class Grade Sheet(s)`}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Safety Backup:</span>
+                <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <ShieldCheck size={13} /> Auto-archived in Grades_History/
+                </span>
+              </div>
+            </div>
+
+            {syncAllMode === 'pull' && (
+              <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10, color: '#92400e', fontSize: '0.8125rem', marginBottom: 16 }}>
+                <AlertTriangle size={18} color="#d97706" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <strong style={{ display: 'block', marginBottom: 2 }}>Caution: Pulling Overwrites Local Excel Files</strong>
+                  <span>"Pull from AWS" downloads online sheets from AWS and updates your offline local sheets. If you entered grades on this computer, use <strong>"Push to AWS"</strong> instead! (Your current files are safely backed up automatically before replacement).</span>
+                </div>
+              </div>
+            )}
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              padding: 14,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              cursor: 'pointer',
+              marginBottom: 10
+            }}>
+              <input
+                type="checkbox"
+                checked={syncAllAuthorized}
+                onChange={e => setSyncAllAuthorized(e.target.checked)}
+                style={{ width: 18, height: 18, marginTop: 2, cursor: 'pointer', accentColor: 'var(--brand-600)' }}
+              />
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.4 }}>
+                <strong style={{ display: 'block', color: 'var(--text-main)', marginBottom: 2 }}>
+                  {syncAllMode === 'pull'
+                    ? 'I authorize pulling latest online Excel data to update my offline files'
+                    : 'I authorize pushing offline grades to the online AWS server'}
+                </strong>
+                <span style={{ color: 'var(--text-muted)' }}>
+                  {syncAllMode === 'pull'
+                    ? 'I understand this will synchronize my local offline files with the master data on AWS.'
+                    : 'I understand this will publish all latest local grades so students can view them online.'}
+                </span>
+              </div>
+            </label>
           </div>
         </Modal>
+      )}
+      {/* Teacher Delete Class Modal */}
+      {deletingClass && (
+        <TeacherDeleteClassModal
+          classInfo={deletingClass}
+          onClose={() => setDeletingClass(null)}
+          onSuccess={() => loadClasses()}
+        />
+      )}
+
+      {/* Teacher View Active Deletion Request Modal */}
+      {viewingRequestClass && (
+        <TeacherViewDeleteRequestModal
+          classInfo={viewingRequestClass}
+          onClose={() => setViewingRequestClass(null)}
+          onCancelled={() => loadClasses()}
+        />
       )}
     </div>
   );
@@ -1493,14 +1991,33 @@ function ClassDetailPage({ classInfo, onBack }) {
   const [syncing, setSyncing] = useState(false);
   const [cloudStatus, setCloudStatus] = useState(null);
   const [cloudChecking, setCloudChecking] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [currentDeletionReq, setCurrentDeletionReq] = useState(classInfo.deletionRequest || null);
+  const [cancellingRequest, setCancellingRequest] = useState(false);
+
+  const handleCancelRequestInDetail = async () => {
+    setCancellingRequest(true);
+    try {
+      await api.post(`/teacher/classes/${encodeURIComponent(classInfo.fileName)}/cancel-delete-request`);
+      toast.success('Deletion request cancelled successfully.');
+      setCurrentDeletionReq(null);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to cancel deletion request.');
+    } finally {
+      setCancellingRequest(false);
+    }
+  };
 
   const checkCloudStatus = async () => {
     setCloudChecking(true);
+    const t0 = performance.now();
     try {
       const res = await api.get('/sync/status');
-      setCloudStatus(res.data);
+      const latency = Math.round(performance.now() - t0);
+      setCloudStatus({ ...res.data, latency });
     } catch {
-      setCloudStatus({ online: false, error: 'Could not reach server' });
+      const latency = Math.round(performance.now() - t0);
+      setCloudStatus({ online: false, latency, error: 'Could not reach server' });
     } finally {
       setCloudChecking(false);
     }
@@ -1588,6 +2105,48 @@ function ClassDetailPage({ classInfo, onBack }) {
 
   return (
     <div className="page-content fade-in">
+      {/* Pending Deletion Warning Banner */}
+      {currentDeletionReq?.status === 'pending' && (
+        <div style={{
+          borderRadius: 14,
+          padding: '14px 20px',
+          marginBottom: 20,
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1px solid #fde68a',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 14,
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b45309', flexShrink: 0 }}>
+              <Clock size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.925rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Class Deletion Request Pending Administrator Approval</span>
+                <span className="deletion-pulse-dot" />
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: '#b45309', marginTop: 2 }}>
+                Reason: "{currentDeletionReq.reason}" • Submitted on {new Date(currentDeletionReq.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{ borderColor: '#d97706', color: '#92400e', background: 'white', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            onClick={handleCancelRequestInDetail}
+            disabled={cancellingRequest}
+          >
+            {cancellingRequest ? <LoadingSpinner size="sm" /> : <RotateCcw size={13} />}
+            <span>Cancel Deletion Request</span>
+          </button>
+        </div>
+      )}
+
       {/* Redesigned Class Header Bar */}
       <div className="class-header-bar no-print">
         <div className="class-header-info">
@@ -1703,6 +2262,24 @@ function ClassDetailPage({ classInfo, onBack }) {
               subtitle="Publish offline sheet to online portal"
               onClick={() => openSyncModal('push')}
             />
+            <DropdownDivider />
+            <DropdownHeader>Danger Zone</DropdownHeader>
+            {currentDeletionReq?.status === 'pending' ? (
+              <DropdownItem
+                icon={<RotateCcw size={15} />}
+                title="Cancel Deletion Request"
+                subtitle="Withdraw pending request for this class"
+                onClick={handleCancelRequestInDetail}
+              />
+            ) : (
+              <DropdownItem
+                icon={<Trash2 size={15} />}
+                danger
+                title="Delete Subject / Class"
+                subtitle="Submit deletion request for Admin approval"
+                onClick={() => setDeleteModalOpen(true)}
+              />
+            )}
           </DropdownMenu>
         </div>
       </div>
@@ -1933,37 +2510,56 @@ function ClassDetailPage({ classInfo, onBack }) {
           size="md"
         >
           <div style={{ padding: '4px 0' }}>
-            <div style={{
-              padding: 16,
-              background: 'var(--brand-50)',
-              border: '1px solid var(--brand-200)',
-              borderRadius: 12,
-              marginBottom: 20,
-              display: 'flex',
-              gap: 12,
-              alignItems: 'flex-start'
-            }}>
-              {syncMode === 'pull' ? (
-                <CloudDownload size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
-              ) : (
-                <Cloud size={24} style={{ color: 'var(--brand-600)', flexShrink: 0, marginTop: 2 }} />
-              )}
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--brand-900)', marginBottom: 4 }}>
-                  {syncMode === 'pull' 
-                    ? `Pull "${classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}" from AWS` 
-                    : `Push "${classInfo.subject || classInfo.fileName?.replace('.xlsx', '')}" to AWS`}
+            {/* Directional Flow Box */}
+            <div className={`cloud-transfer-box ${syncMode}`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: syncMode === 'push' ? 'var(--grad-main)' : 'rgba(245, 158, 11, 0.2)',
+                  color: syncMode === 'push' ? 'white' : '#d97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {syncMode === 'push' ? <Laptop size={20} /> : <Server size={20} />}
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--brand-700)', lineHeight: 1.5 }}>
-                  {syncMode === 'pull' ? (
-                    <>
-                      Download the latest online version of this spreadsheet and class settings from AWS (<strong>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</strong>). Your offline grade sheet will be updated with the online edits.
-                    </>
-                  ) : (
-                    <>
-                      This will push your latest offline grade updates and class settings directly to the live AWS cloud portal so online students can view them immediately.
-                    </>
-                  )}
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Source</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {syncMode === 'push' ? (classInfo.subject || classInfo.fileName) : 'Live AWS EC2 Cloud'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                <ArrowRight size={18} color={syncMode === 'push' ? 'var(--brand-600)' : '#d97706'} />
+                <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  {syncMode === 'push' ? 'Push' : 'Pull'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: syncMode === 'push' ? 'rgba(16, 185, 129, 0.2)' : 'var(--grad-main)',
+                  color: syncMode === 'push' ? '#059669' : 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {syncMode === 'push' ? <Server size={20} /> : <Laptop size={20} />}
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>Destination</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {syncMode === 'push' ? 'Live AWS EC2 Cloud' : (classInfo.subject || classInfo.fileName)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1971,43 +2567,61 @@ function ClassDetailPage({ classInfo, onBack }) {
             <div style={{
               background: 'var(--bg-input)',
               padding: '14px 16px',
-              borderRadius: 10,
-              marginBottom: 20,
+              borderRadius: 12,
+              marginBottom: 18,
               fontSize: '0.85rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: 8,
+              gap: 9,
               border: '1px solid var(--border)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Target AWS Portal:</span>
-                <span style={{ fontWeight: 600 }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>AWS Cloud Portal:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{cloudStatus?.cloudUrl || 'http://16.59.47.134'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Connection Status:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Connection & Latency:</span>
                 {cloudChecking ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
                     <LoadingSpinner size="sm" /> Checking AWS...
                   </span>
                 ) : cloudStatus?.online ? (
-                  <span style={{ color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    ● Online & Reachable
+                  <span style={{ color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }} />
+                    Online & Ready {cloudStatus.latency !== undefined ? `(${cloudStatus.latency}ms)` : ''}
                   </span>
                 ) : (
-                  <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    ● Offline / Unreachable
+                  <span style={{ color: '#dc2626', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444' }} />
+                    Offline / Standby
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Spreadsheet File:</span>
-                <span style={{ fontWeight: 600 }}>{classInfo.fileName}</span>
+                <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{classInfo.fileName}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Enrolled Students:</span>
-                <span style={{ fontWeight: 600 }}>{students.length} Students</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{students.length} Students</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Safety Backup:</span>
+                <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <ShieldCheck size={13} /> Auto-archived in Grades_History/
+                </span>
               </div>
             </div>
+
+            {syncMode === 'pull' && (
+              <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 10, display: 'flex', alignItems: 'flex-start', gap: 10, color: '#92400e', fontSize: '0.8125rem', marginBottom: 16 }}>
+                <AlertTriangle size={18} color="#d97706" style={{ marginTop: 2, flexShrink: 0 }} />
+                <div>
+                  <strong style={{ display: 'block', marginBottom: 2 }}>Caution: Pulling Overwrites Offline File</strong>
+                  <span>Pulling will download the version of this class from AWS and replace your offline spreadsheet. (A local backup snapshot is saved automatically).</span>
+                </div>
+              </div>
+            )}
 
             <label style={{
               display: 'flex',
@@ -2016,9 +2630,9 @@ function ClassDetailPage({ classInfo, onBack }) {
               padding: 14,
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border)',
-              borderRadius: 10,
+              borderRadius: 12,
               cursor: 'pointer',
-              marginBottom: 24
+              marginBottom: 20
             }}>
               <input
                 type="checkbox"
@@ -2061,6 +2675,16 @@ function ClassDetailPage({ classInfo, onBack }) {
             </div>
           </div>
         </Modal>
+      )}
+      {/* Teacher Delete Class Modal */}
+      {deleteModalOpen && (
+        <TeacherDeleteClassModal
+          classInfo={classInfo}
+          onClose={() => setDeleteModalOpen(false)}
+          onSuccess={(newReq) => {
+            setCurrentDeletionReq(newReq);
+          }}
+        />
       )}
     </div>
   );

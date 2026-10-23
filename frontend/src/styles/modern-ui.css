@@ -1,0 +1,1071 @@
+/* ==========================================================================
+   NOVA MODERN UI DESIGN SYSTEM (v2.5 / v3 Studio)
+   Clean, aesthetic, high-precision glassmorphism design.
+   Only active when [data-ui-mode="modern"] or body.ui-modern is set.
+   ========================================================================== */
+
+/* ─── Modern Theme Variables ──────────────────────────────────────────────── */
+[data-ui-mode="modern"],
+body.ui-modern {
+  --bg-page: #f8fafc;
+  --bg-card: rgba(255, 255, 255, 0.92);
+  --bg-sidebar: rgba(255, 255, 255, 0.88);
+  --bg-input: #f8fafc;
+  --bg-hover: rgba(241, 245, 249, 0.8);
+  --bg-elevated: #ffffff;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  --border: rgba(226, 232, 240, 0.85);
+  --border-focus: #6366f1;
+  --border-glass: rgba(255, 255, 255, 0.8);
+
+  --brand-50: #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-200: #c7d2fe;
+  --brand-300: #a5b4fc;
+  --brand-400: #818cf8;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+
+  --violet-50: #f5f3ff;
+  --violet-100: #ede9fe;
+  --violet-200: #ddd6fe;
+  --violet-300: #c4b5fd;
+  --violet-400: #a78bfa;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+  --violet-700: #6d28d9;
+
+  --grad-main: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%);
+  --grad-soft: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  --grad-card: linear-gradient(160deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%);
+  --grad-hero: linear-gradient(135deg, #312e81 0%, #4338ca 35%, #6366f1 70%, #8b5cf6 100%);
+  --grad-accent: linear-gradient(135deg, #06b6d4 0%, #3b82f6 50%, #6366f1 100%);
+
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+  --shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+  --shadow-brand: 0 10px 25px -5px rgba(79, 70, 229, 0.35);
+  --shadow-glass: inset 0 1px 1px rgba(255, 255, 255, 0.9), 0 8px 24px -4px rgba(15, 23, 42, 0.06);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+}
+
+/* ─── Global Canvas Mesh ──────────────────────────────────────────────────── */
+body.ui-modern {
+  background-color: #f8fafc;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.07) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.06) 0px, transparent 45%),
+    radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.04) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+}
+
+/* ─── Modern Sidebar ──────────────────────────────────────────────────────── */
+body.ui-modern .sidebar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(226, 232, 240, 0.75);
+  box-shadow: 4px 0 30px rgba(15, 23, 42, 0.03);
+}
+
+body.ui-modern .sidebar-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  height: 76px;
+  padding: 0 20px;
+}
+
+body.ui-modern .sidebar-logo {
+  border-radius: 12px;
+  background: var(--grad-main);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+body.ui-modern .sidebar-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+body.ui-modern .sidebar-profile {
+  margin: 12px 14px;
+  padding: 12px 14px;
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+}
+
+body.ui-modern .avatar {
+  border-radius: 12px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.2);
+}
+
+body.ui-modern .sidebar-nav {
+  padding: 8px 12px;
+  gap: 4px;
+}
+
+body.ui-modern .nav-item {
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 500;
+  color: #475569;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+body.ui-modern .nav-item:hover {
+  background: rgba(241, 245, 249, 0.9);
+  color: #1e293b;
+  transform: translateX(2px);
+}
+
+body.ui-modern .nav-item.active {
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  color: #4f46e5;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.2), 0 2px 8px rgba(79, 70, 229, 0.08);
+}
+
+body.ui-modern .nav-item.active .nav-icon {
+  color: #4f46e5;
+}
+
+body.ui-modern .nav-badge {
+  background: var(--grad-main);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+}
+
+body.ui-modern .sidebar-footer {
+  padding: 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ─── Modern Page Header ──────────────────────────────────────────────────── */
+body.ui-modern .page-header {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+  height: 76px;
+  padding: 0 32px;
+}
+
+body.ui-modern .page-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+body.ui-modern .page-subtitle {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+body.ui-modern .page-content {
+  padding: 32px;
+}
+
+/* ─── Modern Cards ────────────────────────────────────────────────────────── */
+body.ui-modern .card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.95),
+    0 4px 6px -1px rgba(15, 23, 42, 0.03),
+    0 12px 24px -4px rgba(15, 23, 42, 0.04);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s;
+}
+
+body.ui-modern .card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+body.ui-modern .card-body {
+  padding: 24px;
+}
+
+body.ui-modern .card-footer {
+  padding: 16px 24px;
+  background: rgba(248, 250, 252, 0.7);
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+/* ─── Modern Stat Cards ───────────────────────────────────────────────────── */
+body.ui-modern .stat-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.ui-modern .stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 16px 32px -4px rgba(79, 70, 229, 0.1),
+    0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+body.ui-modern .stat-icon {
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+body.ui-modern .stat-icon.brand {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+
+body.ui-modern .stat-value {
+  font-size: 2.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+/* ─── Modern Welcome Banner ───────────────────────────────────────────────── */
+body.ui-modern .welcome-banner {
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 75%, #4f46e5 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 38px 44px;
+  box-shadow: 0 16px 40px -8px rgba(49, 46, 129, 0.45);
+}
+
+body.ui-modern .welcome-banner .welcome-name {
+  font-size: 2.15rem;
+  letter-spacing: -0.03em;
+}
+
+body.ui-modern .welcome-banner .welcome-id {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+}
+
+/* ─── Modern Buttons ──────────────────────────────────────────────────────── */
+body.ui-modern .btn {
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 0.65rem 1.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.ui-modern .btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+body.ui-modern .btn-primary {
+  background: var(--grad-main);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.ui-modern .btn-primary:hover:not(:disabled) {
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.45);
+  transform: translateY(-1px);
+}
+
+body.ui-modern .btn-secondary {
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+body.ui-modern .btn-secondary:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* ─── Modern Tables ───────────────────────────────────────────────────────── */
+body.ui-modern .table-wrapper {
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.02);
+  background: #ffffff;
+}
+
+body.ui-modern .data-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.725rem;
+  letter-spacing: 0.06em;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+body.ui-modern .data-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(241, 245, 249, 0.9);
+  color: #1e293b;
+}
+
+body.ui-modern .data-table tbody tr:hover td {
+  background: rgba(241, 245, 249, 0.6) !important;
+}
+
+/* ─── Modern Grade Pills & Badges ─────────────────────────────────────────── */
+body.ui-modern .grade-pill {
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  padding: 4px 10px;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+body.ui-modern .grade-a {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+body.ui-modern .grade-b {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+body.ui-modern .grade-c {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+body.ui-modern .grade-d {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+body.ui-modern .grade-f {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+body.ui-modern .badge {
+  border-radius: 8px;
+  padding: 3px 9px;
+  font-weight: 600;
+  font-size: 0.725rem;
+}
+
+/* ─── Modern Segmented Tabs ──────────────────────────────────────────────── */
+body.ui-modern .tabs {
+  background: rgba(241, 245, 249, 0.9);
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  display: inline-flex;
+  gap: 4px;
+  border-bottom: none;
+}
+
+body.ui-modern .tab-btn {
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #64748b;
+  border: none;
+  margin-bottom: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.ui-modern .tab-btn:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+body.ui-modern .tab-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border-bottom: none;
+}
+
+/* ─── Modern Inputs ──────────────────────────────────────────────────────── */
+body.ui-modern .input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+body.ui-modern .input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: color 0.2s ease;
+}
+
+body.ui-modern .input-wrapper:focus-within .input-icon {
+  color: #6366f1;
+}
+
+body.ui-modern .form-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+body.ui-modern .form-input.has-icon {
+  padding-left: 44px !important;
+}
+
+body.ui-modern .form-input:focus {
+  background: #ffffff;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+body.ui-modern .score-input {
+  border-radius: 8px;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+body.ui-modern .score-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+/* ─── Modern Modals ───────────────────────────────────────────────────────── */
+body.ui-modern .modal-overlay {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 16px;
+}
+
+body.ui-modern .modal {
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  margin: auto;
+}
+
+body.ui-modern .modal-header {
+  padding: 20px 28px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+body.ui-modern .modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+body.ui-modern .modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+body.ui-modern .modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body.ui-modern .modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+body.ui-modern .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+body.ui-modern .modal-footer {
+  padding: 18px 28px;
+  border-top: 1px solid #f1f5f9;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+/* ─── UI Switcher Widgets & Controls ──────────────────────────────────────── */
+
+/* Floating UI Switcher */
+.ui-floating-switcher {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ui-floating-switcher.collapsed .ui-switcher-text-wrap,
+.ui-floating-switcher.collapsed .ui-switcher-actions {
+  display: none !important;
+}
+
+.ui-floating-switcher.collapsed .ui-switcher-card {
+  padding: 6px;
+  border-radius: 999px;
+}
+
+.ui-switcher-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: 7px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 16px 36px -4px rgba(79, 70, 229, 0.16),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
+}
+
+.is-modern .ui-switcher-card {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 16px 36px -4px rgba(79, 70, 229, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.ui-switcher-toggle-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ui-switcher-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--grad-main);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+  flex-shrink: 0;
+}
+
+.sparkle-anim {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15) rotate(5deg); opacity: 0.9; }
+}
+
+.ui-switcher-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-switcher-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.ui-switcher-subtitle {
+  font-size: 0.6875rem;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.ui-switcher-actions {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 3px;
+}
+
+.ui-switcher-pill-btn {
+  border: none;
+  background: transparent;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.ui-switcher-pill-btn:hover {
+  color: #0f172a;
+}
+
+.ui-switcher-pill-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.ui-switcher-collapse-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.ui-switcher-collapse-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+/* Inline Segmented Switcher */
+.ui-segmented-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.ui-segmented-switcher.size-sm {
+  border-radius: 10px;
+  padding: 2px;
+}
+
+.ui-segment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 9px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.ui-segmented-switcher.size-sm .ui-segment-btn {
+  padding: 4px 9px;
+  font-size: 0.75rem;
+}
+
+.ui-segment-btn:hover {
+  color: #1e293b;
+}
+
+.ui-segment-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.ui-segmented-switcher.size-xs {
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.ui-segmented-switcher.size-xs .ui-segment-btn {
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  border-radius: 999px;
+  gap: 4px;
+}
+
+/* Discreet Login Theme Switcher (subtle, non-distracting) */
+.login-theme-toggle-wrap {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  z-index: 10;
+  opacity: 0.38;
+  transition: opacity 0.25s ease, transform 0.2s ease;
+}
+
+.login-theme-toggle-wrap:hover,
+.login-theme-toggle-wrap:focus-within {
+  opacity: 0.95;
+  transform: translateY(-1px);
+}
+
+.ui-segmented-switcher.login-theme-switcher {
+  background: rgba(241, 245, 249, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  box-shadow: none;
+  padding: 2px;
+  border-radius: 999px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.ui-segmented-switcher.login-theme-switcher .ui-segment-btn {
+  padding: 3px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  border-radius: 999px;
+  gap: 4px;
+}
+
+.ui-segmented-switcher.login-theme-switcher .ui-segment-btn:hover {
+  color: #475569;
+}
+
+.ui-segmented-switcher.login-theme-switcher .ui-segment-btn.active {
+  background: #ffffff;
+  color: #475569;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+}
+
+/* Header Toggle Button */
+.btn-ui-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  color: #334155;
+  font-size: 0.775rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.btn-ui-header-toggle:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #4f46e5;
+  transform: translateY(-1px);
+}
+
+.ui-header-badge-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+.ui-header-icon-modern {
+  color: #6366f1;
+}
+
+/* Mobile responsive switcher */
+@media (max-width: 768px) {
+  .ui-floating-switcher {
+    bottom: 80px; /* Above mobile bottom navigation bar */
+    right: 16px;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── Nova Modern UI: Class Deletion Requests Overhaul ────────────────────── */
+body.ui-modern .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+body.ui-modern .del-stat-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  padding: 22px;
+  cursor: pointer;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9),
+    0 4px 14px -2px rgba(15, 23, 42, 0.04);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+body.ui-modern .del-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  opacity: 0.85;
+  transition: all 0.2s ease;
+}
+
+body.ui-modern .del-stat-card.pending::before {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+body.ui-modern .del-stat-card.approved::before {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+body.ui-modern .del-stat-card.rejected::before {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+body.ui-modern .del-stat-card.total::before {
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+}
+
+body.ui-modern .del-stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 16px 30px -4px rgba(15, 23, 42, 0.08),
+    0 4px 10px -2px rgba(15, 23, 42, 0.03);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+body.ui-modern .del-stat-card.active {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #6366f1;
+  box-shadow: 
+    0 0 0 3px rgba(99, 102, 241, 0.18),
+    0 12px 24px -4px rgba(99, 102, 241, 0.12);
+}
+
+body.ui-modern .del-stat-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+body.ui-modern .del-stat-icon-box.amber {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+body.ui-modern .del-stat-icon-box.emerald {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+body.ui-modern .del-stat-icon-box.rose {
+  background: linear-gradient(135deg, #fff1f2 0%, #fee2e2 100%);
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+body.ui-modern .del-stat-icon-box.indigo {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
+body.ui-modern .del-stat-num {
+  font-size: 2.35rem;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+}
+
+body.ui-modern .del-security-banner {
+  background: linear-gradient(135deg, rgba(238, 242, 255, 0.8) 0%, rgba(245, 243, 255, 0.8) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(199, 210, 254, 0.8);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px -2px rgba(99, 102, 241, 0.08);
+}
+
+body.ui-modern .deletion-request-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04);
+}
+
+body.ui-modern .deletion-request-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 14px 28px -4px rgba(99, 102, 241, 0.08);
+}
+
+body.ui-modern .deletion-request-card.pending {
+  border-left: 6px solid #f59e0b;
+}
+body.ui-modern .deletion-request-card.approved {
+  border-left: 6px solid #10b981;
+}
+body.ui-modern .deletion-request-card.rejected {
+  border-left: 6px solid #ef4444;
+}
+
+body.ui-modern .deletion-meta-grid {
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 14px;
+}
+
+body.ui-modern .deletion-reason-box {
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-left: 4px solid #6366f1;
+  border-radius: 12px;
+}
+
+/* ─── Nova Modern UI: AWS Cloud Synchronization ───────────────────────────── */
+body.ui-modern .cloud-sync-card {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 24px;
+  padding: 24px 28px;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    0 10px 30px -5px rgba(99, 102, 241, 0.07),
+    0 4px 12px -2px rgba(15, 23, 42, 0.03);
+}
+
+body.ui-modern .cloud-sync-card::before {
+  background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  height: 4px;
+}
+
+body.ui-modern .cloud-sync-metric {
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+body.ui-modern .cloud-sync-metric:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.1);
+}
+
+body.ui-modern .cloud-pipeline-diagram {
+  background: linear-gradient(135deg, rgba(238, 242, 255, 0.6) 0%, rgba(245, 243, 255, 0.6) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px dashed rgba(165, 180, 252, 0.6);
+  border-radius: 18px;
+}
+
+body.ui-modern .cloud-pipeline-node {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+body.ui-modern .cloud-transfer-box {
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+

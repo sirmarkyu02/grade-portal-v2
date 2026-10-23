@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { Shield, RotateCcw } from 'lucide-react';
 import './index.css';
+import './styles/modern-ui.css';
+import { UiThemeProvider } from './context/UiThemeContext';
 
 import LoginPage from './pages/LoginPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -371,28 +373,30 @@ function ThemeApplier() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ThemeApplier />
-        <ImpersonationBanner />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3500,
-            style: { fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 500, borderRadius: 10, boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' },
-            success: { iconTheme: { primary: 'var(--color-success)', secondary: 'white' } },
-            error: { iconTheme: { primary: 'var(--color-error)', secondary: 'white' } },
-          }}
-        />
-        <Routes>
-          <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/onboarding" element={<ProtectedRoute allowedRoles={['student']}><OnboardingPage /></ProtectedRoute>} />
-          <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
-          <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
-          <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+      <UiThemeProvider>
+        <AuthProvider>
+          <ThemeApplier />
+          <ImpersonationBanner />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              style: { fontFamily: 'var(--font-sans)', fontSize: '0.875rem', fontWeight: 500, borderRadius: 10, boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' },
+              success: { iconTheme: { primary: 'var(--color-success)', secondary: 'white' } },
+              error: { iconTheme: { primary: 'var(--color-error)', secondary: 'white' } },
+            }}
+          />
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/onboarding" element={<ProtectedRoute allowedRoles={['student']}><OnboardingPage /></ProtectedRoute>} />
+            <Route path="/student/*" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/teacher/*" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherDashboard /></ProtectedRoute>} />
+            <Route path="/admin/*" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </UiThemeProvider>
     </BrowserRouter>
   );
 }
