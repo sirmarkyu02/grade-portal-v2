@@ -146,7 +146,7 @@ export function AppLayout({ children, navItems, role }) {
                 className={`mobile-bottom-nav-item ${item.active ? 'active' : ''}`}
               >
                 <item.icon size={19} className="mobile-bottom-nav-icon" />
-                <span className="mobile-bottom-nav-label">{item.label}</span>
+                <span className="mobile-bottom-nav-label">{item.shortLabel || item.label}</span>
                 {item.badge && <span className="mobile-bottom-nav-badge">{item.badge}</span>}
               </button>
             ))}
@@ -157,6 +157,7 @@ export function AppLayout({ children, navItems, role }) {
         @media (max-width: 1024px) {
           #close-sidebar { display: flex !important; }
           #mobile-header { display: flex !important; }
+          .page-header .btn-ui-header-toggle { display: none !important; }
         }
       `}</style>
     </div>

@@ -133,12 +133,12 @@ function OverviewPage() {
 
   return (
     <div className="page-content fade-in">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16, gap: 10 }}>
-        <a className="btn btn-primary btn-sm" href="/api/admin/backup" download>
-          <HardDrive size={14} /> Download Backup
+      <div className="overview-quick-actions">
+        <a className="btn btn-primary btn-sm overview-action-btn" href="/api/admin/backup" download>
+          <HardDrive size={14} /> <span>Download Backup</span>
         </a>
-        <button className="btn btn-secondary btn-sm" onClick={handleSync} disabled={syncing}>
-          {syncing ? <LoadingSpinner /> : <RefreshCw size={14} />} Reload Local
+        <button className="btn btn-secondary btn-sm overview-action-btn" onClick={handleSync} disabled={syncing}>
+          {syncing ? <LoadingSpinner size="sm" /> : <RefreshCw size={14} />} <span>Reload Local</span>
         </button>
       </div>
 
@@ -198,25 +198,17 @@ function OverviewPage() {
       {/* ─── AWS Cloud Synchronization Center ─── */}
       <div className="cloud-sync-card fade-in">
         {/* Header Bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 18 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
+        <div className="cloud-sync-header">
+          <div className="cloud-sync-header-left">
+            <div className="cloud-sync-icon-badge" style={{
               background: isOnlineCloud ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'linear-gradient(135deg, #0284c7, #2563eb)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
               boxShadow: '0 8px 16px -4px rgba(79, 70, 229, 0.25)',
-              flexShrink: 0
             }}>
-              {isOnlineCloud ? <Server size={24} /> : <CloudUpload size={24} />}
+              {isOnlineCloud ? <Server size={22} /> : <CloudUpload size={22} />}
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                <span className="badge" style={{
+            <div className="cloud-sync-header-content">
+              <div className="cloud-sync-badges-row">
+                <span className="badge cloud-sync-badge-node" style={{
                   background: isOnlineCloud ? '#e0e7ff' : '#f0fdf4',
                   color: isOnlineCloud ? '#3730a3' : '#166534',
                   fontSize: '0.725rem',
@@ -226,7 +218,8 @@ function OverviewPage() {
                   gap: 5
                 }}>
                   {isOnlineCloud ? <Server size={12} /> : <Laptop size={12} />}
-                  {isOnlineCloud ? 'AWS Cloud Hub (Production Instance)' : 'Local Offline Node (Desktop Authority)'}
+                  <span>{isOnlineCloud ? 'AWS Cloud Hub' : 'Local Offline Node'}</span>
+                  <span className="desktop-only-badge-text">{isOnlineCloud ? ' (Production Instance)' : ' (Desktop Authority)'}</span>
                 </span>
 
                 {cloudStatus.checking ? (
@@ -242,15 +235,15 @@ function OverviewPage() {
                 ) : (
                   <span className="badge badge-error" style={{ fontSize: '0.725rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <span className="cloud-pulse-offline" />
-                    <span>AWS Offline / Unreachable</span>
+                    <span>AWS Offline</span>
                   </span>
                 )}
               </div>
 
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '2px 0 4px 0', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>
+              <h3 className="cloud-sync-title">
                 {isOnlineCloud ? 'AWS Cloud Production Portal' : 'AWS Cloud Synchronization Bridge'}
               </h3>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45, maxWidth: 650 }}>
+              <p className="cloud-sync-desc">
                 {isOnlineCloud
                   ? 'Active production instance on AWS EC2. Online students view live published grades and offline teacher nodes transmit updates to this server.'
                   : 'Local offline authority. Grade and attendance records can be edited without internet, then securely synchronized with the live AWS cloud portal.'}
@@ -259,14 +252,13 @@ function OverviewPage() {
           </div>
 
           {/* Quick Actions */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="cloud-actions-container">
             <button 
               type="button"
-              className="btn btn-secondary btn-sm" 
+              className="btn btn-secondary btn-sm cloud-action-btn cloud-action-ping" 
               onClick={checkCloudStatus} 
               disabled={cloudStatus.checking || cloudSyncing}
               title="Ping AWS server to verify connection health and latency"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
             >
               <RefreshCw size={13} className={cloudStatus.checking ? 'spin' : ''} />
               <span>{cloudStatus.checking ? 'Testing...' : 'Test Ping'}</span>
@@ -276,10 +268,9 @@ function OverviewPage() {
               <>
                 <button 
                   type="button"
-                  className="btn btn-secondary btn-sm" 
+                  className="btn btn-secondary btn-sm cloud-action-btn cloud-action-pull" 
                   onClick={() => { setSyncMode('pull'); setAuthorizedConfirm(false); setSyncModalOpen(true); }}
                   disabled={cloudSyncing}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
                   title="Download latest online edits from AWS Cloud into this offline app"
                 >
                   <CloudDownload size={14} style={{ color: 'var(--brand-600)' }} />
@@ -287,10 +278,9 @@ function OverviewPage() {
                 </button>
                 <button 
                   type="button"
-                  className="btn btn-primary btn-sm" 
+                  className="btn btn-primary btn-sm cloud-action-btn cloud-action-push" 
                   onClick={() => { setSyncMode('push'); setAuthorizedConfirm(false); setSyncModalOpen(true); }}
                   disabled={cloudSyncing}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
                   title="Push offline grade sheets and settings to AWS Cloud"
                 >
                   <CloudUpload size={14} />
@@ -304,8 +294,7 @@ function OverviewPage() {
                 href="/"
                 target="_blank"
                 rel="noreferrer"
-                className="btn btn-primary btn-sm"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+                className="btn btn-primary btn-sm cloud-action-btn cloud-action-portal"
               >
                 <Globe size={14} />
                 <span>Open Student Portal ↗</span>
@@ -318,48 +307,48 @@ function OverviewPage() {
         <div className="cloud-pipeline-diagram">
           {/* Node 1: Local Machine */}
           <div className="cloud-pipeline-node">
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)' }}>
-              <Laptop size={18} />
+            <div className="cloud-pipeline-node-icon" style={{ borderRadius: 10, background: 'var(--bg-input)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-600)', flexShrink: 0 }}>
+              <Laptop size={16} />
             </div>
-            <div>
-              <div style={{ fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
-                {isOnlineCloud ? 'Client Nodes' : 'Local Offline Node'}
+            <div className="cloud-pipeline-node-text" style={{ minWidth: 0 }}>
+              <div className="cloud-pipeline-node-title">
+                {isOnlineCloud ? 'Client Nodes' : 'Local Node'}
               </div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {localFilesCount} Class Sheets • {localStudentsCount} Students
+              <div className="cloud-pipeline-node-detail">
+                {localFilesCount} Classes • {localStudentsCount} Students
               </div>
             </div>
           </div>
 
           {/* Pipeline Track */}
           <div className="cloud-pipeline-track">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className="cloud-pipeline-track-header">
               <span className="cloud-pipeline-tag">
                 <Lock size={10} style={{ display: 'inline', marginRight: 3 }} />
                 AES-256 TLS Encrypted Sync
               </span>
               {hasRosterDiff && (
-                <span className="badge" style={{ fontSize: '0.65rem', padding: '2px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700 }}>
-                  Roster: {localStudentsCount} Local vs {cloudStudentsCount} Cloud ({studentDiff > 0 ? `+${studentDiff}` : studentDiff} on AWS)
+                <span className="badge cloud-pipeline-diff-badge" style={{ fontSize: '0.65rem', padding: '2px 8px', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', fontWeight: 700 }}>
+                  Roster: {localStudentsCount} vs {cloudStudentsCount} ({studentDiff > 0 ? `+${studentDiff}` : studentDiff})
                 </span>
               )}
             </div>
             <div className="cloud-pipeline-line" />
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-              {cloudStatus.online ? '● Sync Pipeline Ready' : '○ Standby / Offline'}
+            <div className="cloud-pipeline-track-status">
+              {cloudStatus.online ? '● Ready' : '○ Standby'}
             </div>
           </div>
 
           {/* Node 2: AWS Cloud Server */}
           <div className="cloud-pipeline-node">
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4338ca' }}>
-              <Server size={18} />
+            <div className="cloud-pipeline-node-icon" style={{ borderRadius: 10, background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4338ca', flexShrink: 0 }}>
+              <Server size={16} />
             </div>
-            <div>
-              <div style={{ fontSize: '0.725rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+            <div className="cloud-pipeline-node-text" style={{ minWidth: 0 }}>
+              <div className="cloud-pipeline-node-title">
                 AWS Cloud Hub
               </div>
-              <div style={{ fontSize: '0.875rem', fontWeight: 800, color: '#4338ca', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="cloud-pipeline-node-detail" style={{ color: '#4338ca' }}>
                 {cloudFilesCount !== undefined ? `${cloudFilesCount} Files • ${cloudStudentsCount || 0} Students` : '16.59.47.134'}
               </div>
             </div>
@@ -367,64 +356,64 @@ function OverviewPage() {
         </div>
 
         {/* Sync Info Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
+        <div className="cloud-sync-metrics-grid">
           <div className="cloud-sync-metric">
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+            <span className="cloud-sync-metric-title">
               Offline Local Records
             </span>
-            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)' }}>
-              {localFilesCount} Files <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)' }}>({localStudentsCount} Students)</span>
+            <span className="cloud-sync-metric-value" style={{ fontFamily: 'var(--font-mono)' }}>
+              {localFilesCount} Files <span className="cloud-sync-metric-count">({localStudentsCount} Students)</span>
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <span className="cloud-sync-metric-subtitle">
               Ready in local Grades folder
             </span>
           </div>
 
           <div className="cloud-sync-metric">
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+            <span className="cloud-sync-metric-title">
               Target AWS Server
             </span>
             <a 
               href={cloudStatus.cloudUrl} 
               target="_blank" 
               rel="noopener noreferrer" 
-              style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--brand-600)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+              className="cloud-sync-metric-link"
             >
               <span>{cloudStatus.cloudUrl.replace('http://', '').replace('https://', '')}</span>
               <ExternalLink size={12} />
             </a>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <span className="cloud-sync-metric-subtitle">
               Live public EC2 instance
             </span>
           </div>
 
           <div className="cloud-sync-metric">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+              <span className="cloud-sync-metric-title">
                 Online AWS Cloud Roster
               </span>
               {hasRosterDiff && (
                 <span className="badge" style={{ fontSize: '0.625rem', padding: '1px 6px', background: '#dbeafe', color: '#1e40af', fontWeight: 700 }}>
-                  {studentDiff > 0 ? `+${studentDiff}` : studentDiff} AWS Cloud
+                  {studentDiff > 0 ? `+${studentDiff}` : studentDiff}
                 </span>
               )}
             </div>
-            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: cloudStatus.online ? '#059669' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            <span className="cloud-sync-metric-value" style={{ color: cloudStatus.online ? '#059669' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               {cloudStatus.online && cloudStudentsCount !== undefined ? `${cloudStudentsCount} Students` : '—'}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {cloudStatus.online ? `${cloudFilesCount || 0} classes serving online` : 'Connect to check online roster'}
+            <span className="cloud-sync-metric-subtitle">
+              {cloudStatus.online ? `${cloudFilesCount || 0} classes serving online` : 'Connect to check roster'}
             </span>
           </div>
 
           <div className="cloud-sync-metric">
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+            <span className="cloud-sync-metric-title">
               Last Cloud Sync
             </span>
-            <span style={{ fontSize: '0.925rem', fontWeight: 700, color: 'var(--text-main)' }}>
+            <span className="cloud-sync-metric-value" style={{ fontSize: '0.95rem' }}>
               {cloudStatus.lastSync ? new Date(cloudStatus.lastSync).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never Synced Yet'}
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            <span className="cloud-sync-metric-subtitle">
               Encrypted bidirectional sync
             </span>
           </div>
@@ -614,7 +603,7 @@ function OverviewPage() {
       </Modal>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 32 }}>
+      <div className="overview-stats-grid">
         {[
           { 
             label: 'Total Students (Offline Local)', 
@@ -2993,6 +2982,7 @@ export default function AdminDashboard() {
     {
       icon: Trash2,
       label: 'Deletion Requests',
+      shortLabel: 'Requests',
       active: page === 'deletion-requests',
       badge: pendingDeletionsCount > 0 ? pendingDeletionsCount : null,
       onClick: () => navigate('/admin/deletion-requests')
